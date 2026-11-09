@@ -2,6 +2,12 @@
 
 Juego de fútbol arcade inspirado en *Blue Lock*. Elige un héroe, usa su habilidad, llena la barra de despertar y gana el partido.
 
+## Demo
+
+Puedes probar el juego aquí:
+
+**https://HectoritoG.github.io/A_BlueLock_Game/**
+
 ## Características
 
 - Dos partidos jugables con héroes y rivales desbloqueables.
@@ -30,6 +36,10 @@ Abre <http://localhost:3000>.
 npm run build
 npm start
 ```
+
+## Despliegue en GitHub Pages
+
+El workflow `.github/workflows/pages.yml` publica la carpeta `public/` en GitHub Pages cada vez que se hace push a `main`. La página principal (`public/index.html`) redirige a `bluelock.html`, por lo que el juego funciona como sitio estático sin necesidad de ejecutar Next.js en el servidor.
 
 ## Controles
 
