@@ -846,7 +846,7 @@ const FIELD = { x:0, y:0, w:4200, h:800 };
 const GOAL_W = 280, GOAL_DEPTH = 40, PLAYER_R = 18, BALL_R = 14, MATCH_TIME = 180;
 const AWAKEN_CHARGE_EXTRA_TIME = 1.0; // A full awaken charge takes 1 extra second
 const SHOT_CHARGE_TIME = 0.6; // Seconds to fully charge a normal shot
-const SAE_OFF_BALANCE_RANGE = 300; // Max distance for Sae to target the ball carrier with Off Balance
+const SAE_OFF_BALANCE_RANGE = 270; // Max distance for Sae to target the ball carrier with Off Balance
 const SHOT_MIN_POWER = 0.35; // A tap still fires at 35% of the normal shot power
 let W = window.innerWidth, H = window.innerHeight, camX = 0, camY = 0;
 let GAME_SCALE = 1.0; // 1.0 = normal, <1.0 = zoomed out (more visible)
@@ -1848,6 +1848,7 @@ class Ball {
     player.nagiCharge = 0.45;
     for(const p of G.players){
       if(p.team === player.team) continue;
+      if(p.isControlImmune()) continue;
       if(dist(player, p) < 240){
         p.stunTimer = Math.max(p.stunTimer, 1.5);
         spawnParticles(p.x, p.y, '#b14aed', 10);
@@ -2114,6 +2115,13 @@ class Player {
         this.isagiAutoTimer = 0;
         this.isagiAutoPending = false;
       }
+    }
+    if(this.isControlImmune()){
+      // Bachira's dribble combo is uninterruptible: clear any control effect
+      // that slipped through before it can slow him down.
+      this.stunTimer = 0;
+      this.freezeTimer = 0;
+      this.slowTimer = 0;
     }
     if(this.stunTimer > 0){ this.stunTimer -= dt; this.vx *= 0.5; this.vy *= 0.5; }
     if(this.tackleActive > 0) this.tackleActive -= dt;
@@ -2407,6 +2415,7 @@ class Player {
         const saePush = (radius, force, stun) => {
           for(const p of G.players){
             if(p.team === this.team) continue;
+            if(p.isControlImmune()) continue;
             if(dist(this, p) < radius){
               const ang = angleTo(this, p);
               p.vx += Math.cos(ang) * force;
@@ -2515,6 +2524,7 @@ class Player {
       if(this.rivalKey === 'barou'){
         for(const p of G.players){
           if(p.team === this.team) continue;
+          if(p.isControlImmune()) continue;
           const d = dist(this, p);
           if(d < PLAYER_R * this.size + PLAYER_R * p.size + 5){
             const ang = angleTo(this, p); p.vx += Math.cos(ang) * 8; p.vy += Math.sin(ang) * 8;
@@ -2532,7 +2542,7 @@ class Player {
         }
       }
       if(this.rivalKey === 'karasu'){
-        for(const p of G.players){ if(p.team === this.team) continue; if(dist(this, p) < 100){ p.vx *= 0.7; p.vy *= 0.7; } }
+        for(const p of G.players){ if(p.team === this.team) continue; if(p.isControlImmune()) continue; if(dist(this, p) < 100){ p.vx *= 0.7; p.vy *= 0.7; } }
       }
     }
 
@@ -2564,7 +2574,7 @@ class Player {
   // Awakened chains four fake volleys before queuing the Five Stage Volley.
   nagiFakeVolley(opponent){
     if(this.heroKey !== 'nagi') return;
-    if(opponent){
+    if(opponent && !opponent.isControlImmune()){
       opponent.stunTimer = Math.max(opponent.stunTimer, 1.6);
       opponent.slowTimer = Math.max(opponent.slowTimer, 2.0);
       spawnParticles(opponent.x, opponent.y, '#00e5ff', 8);
@@ -2618,12 +2628,17 @@ class Player {
     const stunDuration = this.isAwakened ? 1.2 : 0.8;
     for(const p of G.players){
       if(p.team === this.team) continue;
+      if(p.isControlImmune()) continue;
       if(dist(this, p) < stunRadius){
         p.stunTimer = Math.max(p.stunTimer, stunDuration);
         spawnParticles(p.x, p.y, config.color, 8);
       }
     }
     spawnParticles(this.x, this.y, this.isAwakened ? '#ff00ff' : config.color, this.isAwakened ? 12 : 18);
+  }
+
+  isControlImmune(){
+    return this.heroKey === 'bachira' && (this.bachiraCombo || this.bachiraBallImmune > 0);
   }
 
   useAbility(){
@@ -2766,6 +2781,7 @@ class Player {
           this.facingAngle = goalAng;
           for(const p of G.players){
             if(p === this) continue;
+            if(p.isControlImmune()) continue;
             p.freezeTimer = Math.max(p.freezeTimer, chargeDuration + 0.15);
             p.vx *= 0.2; p.vy *= 0.2;
           }
@@ -2776,6 +2792,7 @@ class Player {
           this.vx *= 0.5; this.vy *= 0.5;
           for(const p of G.players){
             if(p === this) continue;
+            if(p.isControlImmune()) continue;
             p.slowTimer = Math.max(p.slowTimer, chargeDuration + 0.1);
           }
           spawnParticles(this.x, this.y, config.color, 10);
@@ -2857,6 +2874,7 @@ class Player {
         // Slow all opponents
         for(const p of G.players){
           if(p.team === this.team) continue;
+          if(p.isControlImmune()) continue;
           p.slowTimer = Math.max(p.slowTimer, 1.5);
           spawnParticles(p.x, p.y, hioriColor, 8);
         }
@@ -2885,7 +2903,7 @@ class Player {
       // SAE OFF-BALL: Off Balance freezes the ball carrier; otherwise Genius Flow.
       if(!this.hasBall){
         const ballOwner = G.ball.owner;
-        if(ballOwner && ballOwner.team !== this.team && dist(this, ballOwner) <= SAE_OFF_BALANCE_RANGE){
+        if(ballOwner && ballOwner.team !== this.team && !ballOwner.isControlImmune() && dist(this, ballOwner) <= SAE_OFF_BALANCE_RANGE){
           // OFF BALANCE: freeze the ball carrier for 1s and dash toward them.
           ballOwner.freezeTimer = Math.max(ballOwner.freezeTimer, 1.0);
           ballOwner.vx = 0; ballOwner.vy = 0;
@@ -2932,17 +2950,17 @@ class Player {
       }
       // SAE ON-BALL BASE: Genius Command — stun, dribble push, and pass to Shidou.
       for(const p of G.players){
-        if(p.team !== this.team){
-          const d = dist(this, p);
-          if(d < 130){
-            // Stun and knockback nearby opponents (dribble effect)
-            const ang = angleTo(this, p);
-            p.vx += Math.cos(ang) * 10;
-            p.vy += Math.sin(ang) * 10;
-            p.stunTimer = Math.max(p.stunTimer, 0.8);
-          }
-          p.slowTimer = 3.0;
+        if(p.team === this.team) continue;
+        if(p.isControlImmune()) continue;
+        const d = dist(this, p);
+        if(d < 130){
+          // Stun and knockback nearby opponents (dribble effect)
+          const ang = angleTo(this, p);
+          p.vx += Math.cos(ang) * 10;
+          p.vy += Math.sin(ang) * 10;
+          p.stunTimer = Math.max(p.stunTimer, 0.8);
         }
+        p.slowTimer = 3.0;
       }
       const shidou = G.players.find(p => p.team === this.team && p.rivalKey === 'shidou');
       if(shidou){
@@ -3010,6 +3028,7 @@ class Player {
       const pushRadius = this.isAwakened ? 200 : 160;
       for(const p of G.players){
         if(p.team === this.team) continue;
+        if(p.isControlImmune()) continue;
         const d = dist(this, p);
         if(d < pushRadius){
           const ang = angleTo(this, p);
@@ -3031,6 +3050,7 @@ class Player {
       if(this.rivalKey === 'karasu'){
         for(const p of G.players){
           if(p.team === this.team) continue;
+          if(p.isControlImmune()) continue;
           const d = dist(this, p);
           if(d < 150){
             const ang = angleTo(this, p);
@@ -3109,7 +3129,7 @@ class Player {
         const goalX = this.team === 'blue' ? FIELD.x + FIELD.w : FIELD.x;
         const goalAng = angleTo(this, {x: goalX, y: FIELD.y + FIELD.h/2});
         this.vx += Math.cos(goalAng) * 12; this.vy += Math.sin(goalAng) * 12;
-        for(const p of G.players){ if(p.team === this.team) continue; if(dist(this, p) < 90){ p.stunTimer = Math.max(p.stunTimer, 1.5); } }
+        for(const p of G.players){ if(p.team === this.team) continue; if(p.isControlImmune()) continue; if(dist(this, p) < 90){ p.stunTimer = Math.max(p.stunTimer, 1.5); } }
         G.cameraShake = 8; spawnParticles(this.x, this.y, '#e040fb', 25);
         showAbilityNotif('KAISER IMPACT ZERO!', '#ff00ff');
         this.pendingShot = 0.3;
@@ -3148,6 +3168,7 @@ class Player {
       this.vx = 0; this.vy = 0;
       for(const p of G.players){
         if(p.team === this.team) continue;
+        if(p.isControlImmune()) continue;
         if(dist(this, p) < stunRadius){
           p.stunTimer = Math.max(p.stunTimer, stunDuration);
           spawnParticles(p.x, p.y, awakened ? '#ff00ff' : '#00e5a0', 4);
@@ -3198,7 +3219,7 @@ class Player {
       spawnParticles(this.x, this.y, '#ff66aa', 12); SFX.tackle();
     }
     else if(this.rivalKey === 'niko'){
-      for(const p of G.players){ if(p.team !== this.team && dist(this, p) < 200){ p.slowTimer = Math.max(p.slowTimer, this.isAwakened ? 3.0 : 2.0); } }
+      for(const p of G.players){ if(p.team !== this.team && !p.isControlImmune() && dist(this, p) < 200){ p.slowTimer = Math.max(p.slowTimer, this.isAwakened ? 3.0 : 2.0); } }
       spawnParticles(this.x, this.y, '#66ccff', 20);
     }
     else if(this.rivalKey === 'donlorenzo'){
@@ -3220,6 +3241,7 @@ class Player {
         // 1. Stun ALL players on the field for 1 second
         for(const p of G.players){
           if(p === this) continue;
+          if(p.isControlImmune()) continue;
           p.stunTimer = Math.max(p.stunTimer, 1.0);
           spawnParticles(p.x, p.y, '#2dd4a8', 5);
         }
@@ -3252,6 +3274,7 @@ class Player {
         this.vy += dashDir.y * 10;
         for(const p of G.players){
           if(p.team === this.team) continue;
+          if(p.isControlImmune()) continue;
           if(dist(this, p) < 130){ // More area than playable Rin
             p.stunTimer = Math.max(p.stunTimer, 2.0);
             spawnParticles(p.x, p.y, '#2dd4a8', 10);
@@ -3332,6 +3355,7 @@ class Player {
       const pushRadius = this.isAwakened ? 200 : 160;
       for(const p of G.players){
         if(p.team === this.team) continue;
+        if(p.isControlImmune()) continue;
         const d = dist(this, p);
         if(d < pushRadius){
           const ang = angleTo(this, p);
@@ -3766,7 +3790,7 @@ function updateAI(player, dt){
   // SAE OFF-BALL DEFENSE: Off Balance freezes the ball carrier so Sae can win the ball.
   if(player.rivalKey === 'sae' && !player.hasBall && player.activeCd <= 0 && player.aiTimer <= 0 && player.stunTimer <= 0 && player.freezeTimer <= 0){
     const owner = G.ball.owner;
-    if(owner && owner.team !== player.team && dist(player, owner) <= SAE_OFF_BALANCE_RANGE && Math.random() < 0.45 * DIFFICULTY[G.difficulty].rivalAbility){
+    if(owner && owner.team !== player.team && !owner.isControlImmune() && dist(player, owner) <= SAE_OFF_BALANCE_RANGE && Math.random() < 0.45 * DIFFICULTY[G.difficulty].rivalAbility){
       player.useAbility();
       player.aiTimer = 1.0;
     }
@@ -4427,6 +4451,7 @@ function updateHioriSnowfields(dt){
       const p = G.players[j];
       if(p.team === f.team) continue;
       if(f.hit.has(p)) continue;
+      if(p.isControlImmune()) continue;
       if(dist(p, f) < f.radius + PLAYER_R * p.size){
         f.hit.add(p);
         p.freezeTimer = Math.max(p.freezeTimer, 1.5);
