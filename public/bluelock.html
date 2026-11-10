@@ -779,6 +779,120 @@ hioriSnowflakeImg.onload = renderHioriSnowflake;
 hioriSnowflakeImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(HIORI_SNOWFLAKE_SVG);
 if(hioriSnowflakeImg.complete) renderHioriSnowflake();
 
+// Kurona's Planetary Hotline black hole. Pre-rendered from SVG so the
+// swirling vortex stays cheap while the 3s gravity well is on the field.
+const KURONA_BLACK_HOLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="khShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.95"/>
+      <stop offset="52%" stop-color="#03000a" stop-opacity="0.72"/>
+      <stop offset="78%" stop-color="#0b0020" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0b0020" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="khGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#b026ff" stop-opacity="0.42"/>
+      <stop offset="38%" stop-color="#5b2bff" stop-opacity="0.28"/>
+      <stop offset="68%" stop-color="#00d4ff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="khCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#000000"/>
+      <stop offset="58%" stop-color="#020008"/>
+      <stop offset="80%" stop-color="#16002e"/>
+      <stop offset="100%" stop-color="#3a0a5e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="khArmA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff" stop-opacity="0"/>
+      <stop offset="28%" stop-color="#00e5ff" stop-opacity="0.9"/>
+      <stop offset="58%" stop-color="#5b2bff" stop-opacity="0.9"/>
+      <stop offset="82%" stop-color="#b026ff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#ff4fd8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="khArmB" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff4fd8" stop-opacity="0"/>
+      <stop offset="26%" stop-color="#ff4fd8" stop-opacity="0.85"/>
+      <stop offset="56%" stop-color="#b026ff" stop-opacity="0.9"/>
+      <stop offset="80%" stop-color="#5b2bff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="khRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="30%" stop-color="#5b2bff"/>
+      <stop offset="58%" stop-color="#b026ff"/>
+      <stop offset="78%" stop-color="#ff4fd8"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <filter id="khGlowFilter" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="khSoftFilter" x="-90%" y="-90%" width="280%" height="280%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+  <circle cx="256" cy="256" r="250" fill="url(#khShadow)"/>
+  <circle cx="256" cy="256" r="250" fill="url(#khGlow)"/>
+  <g filter="url(#khSoftFilter)" opacity="0.9">
+    <ellipse cx="256" cy="256" rx="196" ry="196" fill="none" stroke="#5b2bff" stroke-width="26" opacity="0.34"/>
+    <ellipse cx="256" cy="256" rx="158" ry="158" fill="none" stroke="#00e5ff" stroke-width="16" opacity="0.28"/>
+    <ellipse cx="256" cy="256" rx="120" ry="120" fill="none" stroke="#ff4fd8" stroke-width="12" opacity="0.22"/>
+  </g>
+  <g filter="url(#khGlowFilter)" fill="none" stroke-linecap="round">
+    <path d="M256 256 C304 206 374 188 424 228 C466 262 458 332 410 360 C354 392 282 364 260 312 C242 270 270 228 316 218 C356 210 390 240 396 278" stroke="url(#khArmA)" stroke-width="22" opacity="0.9"/>
+    <path d="M256 256 C208 306 138 324 88 284 C46 250 54 180 102 152 C158 120 230 148 252 200 C270 242 242 284 196 294 C156 302 122 272 116 234" stroke="url(#khArmB)" stroke-width="22" opacity="0.9"/>
+    <path d="M256 256 C292 220 344 206 382 234 C416 258 412 308 378 332 C340 358 294 340 278 304 C264 272 284 242 316 234" stroke="url(#khArmA)" stroke-width="11" opacity="0.8"/>
+    <path d="M256 256 C220 292 168 306 130 278 C96 254 100 204 134 180 C172 154 218 172 234 208 C248 240 228 270 196 278" stroke="url(#khArmB)" stroke-width="11" opacity="0.8"/>
+    <path d="M256 256 C286 226 336 212 372 238 C402 260 398 304 368 326" stroke="#d8ffff" stroke-width="2.5" opacity="0.75"/>
+    <path d="M256 256 C226 286 176 300 140 274 C110 252 114 208 144 186" stroke="#ffd6ff" stroke-width="2.5" opacity="0.7"/>
+  </g>
+  <g filter="url(#khGlowFilter)">
+    <ellipse cx="256" cy="256" rx="138" ry="138" fill="none" stroke="url(#khRing)" stroke-width="9" opacity="0.95"/>
+    <ellipse cx="256" cy="256" rx="112" ry="112" fill="none" stroke="#ffffff" stroke-width="2.2" opacity="0.82"/>
+    <ellipse cx="256" cy="256" rx="158" ry="158" fill="none" stroke="#00e5ff" stroke-width="3" opacity="0.42" stroke-dasharray="7 15"/>
+    <ellipse cx="256" cy="256" rx="178" ry="178" fill="none" stroke="#b026ff" stroke-width="2" opacity="0.32" stroke-dasharray="4 22"/>
+  </g>
+  <circle cx="256" cy="256" r="88" fill="url(#khCore)"/>
+  <circle cx="256" cy="256" r="62" fill="#000000"/>
+  <circle cx="256" cy="256" r="65" fill="none" stroke="#1a0033" stroke-width="4" opacity="0.95"/>
+  <circle cx="256" cy="256" r="72" fill="none" stroke="#5b2bff" stroke-width="1.5" opacity="0.5"/>
+  <g fill="#ffffff">
+    <circle cx="118" cy="154" r="3" opacity="0.9"/>
+    <circle cx="392" cy="138" r="2.2" opacity="0.75"/>
+    <circle cx="410" cy="342" r="2.8" opacity="0.8"/>
+    <circle cx="150" cy="386" r="2" opacity="0.7"/>
+    <circle cx="330" cy="410" r="1.8" opacity="0.65"/>
+    <circle cx="96" cy="286" r="1.6" opacity="0.6"/>
+    <circle cx="368" cy="96" r="1.7" opacity="0.6"/>
+  </g>
+  <g fill="#00e5ff">
+    <circle cx="180" cy="120" r="2.4" opacity="0.8"/>
+    <circle cx="402" cy="260" r="2" opacity="0.7"/>
+    <circle cx="120" cy="330" r="2.2" opacity="0.7"/>
+    <circle cx="286" cy="404" r="1.7" opacity="0.6"/>
+  </g>
+  <g fill="#ff4fd8">
+    <circle cx="300" cy="112" r="2.2" opacity="0.8"/>
+    <circle cx="420" cy="210" r="1.8" opacity="0.7"/>
+    <circle cx="160" cy="420" r="2" opacity="0.65"/>
+    <circle cx="206" cy="98" r="1.6" opacity="0.6"/>
+  </g>
+</svg>`;
+const kuronaBlackHoleImg = new Image();
+const kuronaBlackHoleCanvas = document.createElement('canvas');
+kuronaBlackHoleCanvas.width = 512;
+kuronaBlackHoleCanvas.height = 512;
+let kuronaBlackHoleReady = false;
+function renderKuronaBlackHole(){
+  if(!kuronaBlackHoleImg.complete || kuronaBlackHoleImg.naturalWidth <= 0) return;
+  const c = kuronaBlackHoleCanvas.getContext('2d');
+  c.clearRect(0, 0, kuronaBlackHoleCanvas.width, kuronaBlackHoleCanvas.height);
+  c.drawImage(kuronaBlackHoleImg, 0, 0, kuronaBlackHoleCanvas.width, kuronaBlackHoleCanvas.height);
+  kuronaBlackHoleReady = true;
+}
+kuronaBlackHoleImg.onload = renderKuronaBlackHole;
+kuronaBlackHoleImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(KURONA_BLACK_HOLE_SVG);
+if(kuronaBlackHoleImg.complete) renderKuronaBlackHole();
+
 const HEROES = {
   isagi: { name:'ISAGI', passive:'Spatial Awareness', active:'Direct Shot', awakenName:'World\'s Best', passiveDesc:'Pases precisos y visión de juego.', activeDesc:'Sin balón: al recibir o con un balón suelto muy cerca, dispara automáticamente al ángulo más abierto y gana velocidad x1.2 mientras esté armado.', awakenDesc:'Dash + mismo disparo automático o tiro directo a balón suelto; muy difícil de atajar y gana velocidad x1.3 mientras esté armado.', color:'#4fc3f7', num:'11', speed:3.9, ballControl:1.3, passPower:1.8, passAccuracy:1.7, shotPower:1.3, shotAccuracy:1.5, size:1.0, dribbleStyle:'calculated', activeDuration:1.0, activeCooldown:11.0, awakenDuration:8.0, rarity:'SR' },
   rin: { name:'RIN', passive:'Precision Striker', active:'Pulverize', awakenName:'Pulverize Curve', passiveDesc:'Disparos potentes y precisos.', activeDesc:'Carga un tiro curvo al palo lejano y ralentiza a todos.', awakenDesc:'Congela el tiempo un instante y remata con un tiro curvo potente.', color:'#2dd4a8', num:'10', speed:4.0, ballControl:1.2, passPower:1.2, passAccuracy:1.2, shotPower:1.7, shotAccuracy:1.7, size:1.0, dribbleStyle:'aggressive', activeDuration:2.0, activeCooldown:9.0, awakenDuration:12.0, rarity:'SSR' },
@@ -786,7 +900,7 @@ const HEROES = {
   bachira: { name:'BACHIRA', passive:'Monster Dribble', active:'Scissors Dribble', awakenName:'Elastic Sombrero', passiveDesc:'Regate impredecible y difícil de tacklear.', activeDesc:'Tijeras que aturden rivales y avanzan sin perder el balón.', awakenDesc:'Tijeras → Elástica → Sombrerito: eleva el balón y avanza. Combo invencible.', color:'#ffd700', num:'08', speed:4.3, ballControl:1.7, passPower:1.2, passAccuracy:1.2, shotPower:1.2, shotAccuracy:1.2, size:1.0, dribbleStyle:'zigzag', activeDuration:2.5, activeCooldown:14.0, awakenDuration:8.0, rarity:'SR' },
   chigiri: { name:'CHIGIRI', passive:'Speed Demon', active:'Light Speed', awakenName:'Lightspeed God', passiveDesc:'El más rápido del campo.', activeDesc:'2.5s de velocidad x1.3 y roba al contacto.', awakenDesc:'Mini dash, velocidad x1.7 y roba el balón al chocar.', color:'#e8365d', num:'22', speed:4.8, ballControl:1.4, passPower:1.2, passAccuracy:1.2, shotPower:1.3, shotAccuracy:1.3, size:0.95, dribbleStyle:'speed', activeDuration:2.5, activeCooldown:19.0, awakenDuration:8.0, rarity:'SR' },
   yukimiya: { name:'YUKIMIYA', passive:'Phantom Dribble', active:'La Boba', awakenName:'Phantom Feint', passiveDesc:'Regate elegante que confunde a los rivales.', activeDesc:'Crea un fantasma, da un dash y es inmune a control; aturde rivales cercanos y gana velocidad x1.2 por 2s.', awakenDesc:'La Boba x3 seguidas con dash e inmunidad a control (0.5s entre cada una y menos distancia), aturde 1.2s y gana velocidad x1.2.', color:'#ffb347', num:'16', speed:4.1, ballControl:1.8, passPower:1.2, passAccuracy:1.2, shotPower:1.3, shotAccuracy:1.3, size:1.0, dribbleStyle:'precise', activeDuration:1.8, activeCooldown:10.0, awakenDuration:8.0, rarity:'R' },
-  kurona: { name:'KURONA', passive:'Shark Tackle', active:'Planetary Hotline', awakenName:'Apex Predator', passiveDesc:'Su tacleada DASH tiene mayor alcance.', activeDesc:'Dash + pase perfecto; el aliado hace un dash y te lo devuelve. 3s: velocidad x1.1 y roba al chocar.', awakenDesc:'Hotline potenciado: el compañero hace un dash mayor + 3s velocidad x1.3 y roba al chocar.', color:'#c27890', num:'23', speed:4.4, ballControl:1.4, passPower:1.2, passAccuracy:1.2, shotPower:1.3, shotAccuracy:1.3, size:0.95, dribbleStyle:'speed', activeDuration:3.0, activeCooldown:10.0, awakenDuration:8.0, rarity:'R' },
+  kurona: { name:'KURONA', passive:'Shark Tackle', active:'Planetary Hotline', awakenName:'Apex Predator', passiveDesc:'Su tacleada DASH tiene mayor alcance.', activeDesc:'Dash + pase perfecto; el aliado hace un dash y te lo devuelve. 3s: agujero negro que ralentiza rivales y roba al chocar.', awakenDesc:'Hotline potenciado: el compañero hace un dash mayor + agujero negro que ralentiza rivales 3s y roba al chocar.', color:'#c27890', num:'23', speed:4.4, ballControl:1.4, passPower:1.2, passAccuracy:1.2, shotPower:1.3, shotAccuracy:1.3, size:0.95, dribbleStyle:'speed', activeDuration:3.0, activeCooldown:10.0, awakenDuration:8.0, rarity:'R' },
   hiori: { name:'HIORI', passive:'AI Network', active:'Cold Pass', awakenName:'System Override', passiveDesc:'Calcula rutas y sus pases curvan automáticamente.', activeDesc:'Pase perfecto que prioriza al jugador humano + ralentiza rivales 1.5s.', awakenDesc:'Pase perfecto + crea un área de copo de nieve celeste: congela rivales 1.5s y los ralentiza 3s.', color:'#00ff88', num:'14', speed:4.0, ballControl:1.6, passPower:2.0, passAccuracy:2.2, shotPower:1.3, shotAccuracy:1.1, size:1.0, dribbleStyle:'tactical', activeDuration:1.0, activeCooldown:7.0, awakenDuration:8.0, rarity:'SR' },
   kunigami: { name:'KUNIGAMI', passive:'Power Forward', active:'Power Dash', awakenName:'Hero Shot', passiveDesc:'Disparos devastadores y embestidas potentes.', activeDesc:'Embiste con escudo hacia adelante.', awakenDesc:'Escudo reforzado y embestida más potente.', color:'#ff8c00', num:'22', speed:3.8, ballControl:1.2, passPower:2.0, passAccuracy:2.0, shotPower:3.4, shotAccuracy:2.6, size:1.1, dribbleStyle:'aggressive', activeDuration:1.5, activeCooldown:8.0, awakenDuration:8.0, rarity:'SR' },
   kaiser: { name:'KAISER', passive:'Absolute Accuracy', active:'Ruta del Emperador', awakenName:'Ruta del Emperador: Zero', passiveDesc:'Sus disparos son devastadores y precisos.', activeDesc:'Sin balón: mini dash en zigzag con partículas rosa y azul. Si recibes el balón en 2s, disparas el Kaiser Impact. Con balón: Kaiser Impact directo.', awakenDesc:'Ruta mejorada: zigzag más rápido. Si recibes el balón en 2s, ejecutas el Kaiser Impact Zero. Con balón: dash + tiro curvo.', color:'#e040fb', num:'10', speed:4.1, ballControl:1.4, passPower:1.3, passAccuracy:1.5, shotPower:2.0, shotAccuracy:1.8, size:1.0, dribbleStyle:'aggressive', activeDuration:1.5, activeCooldown:8.0, awakenDuration:10.0, rarity:'SSR' },
@@ -889,6 +1003,8 @@ const G = {
   yukimiyaGhosts: [],
   // === HIORI SNOWFIELD (Awakened Cold Pass) ===
   hioriSnowfields: [],
+  // === KURONA BLACK HOLE (Planetary Hotline) ===
+  kuronaBlackHoles: [],
   // === GK SAVE TRACKBACK ===
   recentSave: { team: null, timer: 0 },
   _cachedHuman: null
@@ -2702,9 +2818,20 @@ class Player {
       }
     }
     else if(this.heroKey === 'kurona'){
-      // PLANETARY HOTLINE: Kurona dashes forward and immediately starts a give-and-go.
+      // PLANETARY HOTLINE: Kurona dashes forward, starts a give-and-go, and
+      // leaves a 3s black hole that slows rivals caught in its gravity well.
       this.dashTimer = Math.max(this.dashTimer, config.activeDuration);
       const hotlineColor = this.isAwakened ? '#ff00ff' : config.color;
+      G.kuronaBlackHoles.push({
+        x: this.x, y: this.y,
+        radius: this.isAwakened ? 250 : 220,
+        life: 3.0, maxLife: 3.0,
+        team: this.team,
+        hit: new Set(),
+        spin: Math.random() * Math.PI * 2
+      });
+      spawnParticles(this.x, this.y, '#b026ff', 24);
+      spawnParticles(this.x, this.y, '#00e5ff', 18);
       const goalX = this.team === 'blue' ? FIELD.x + FIELD.w : FIELD.x;
       const goalAng = angleTo(this, {x: goalX, y: FIELD.y + FIELD.h/2});
       this.vx += Math.cos(goalAng) * 14;
@@ -4027,7 +4154,6 @@ function handleBallOwner(player, dt, goalX){
   dir = normalize(dir); let speed = player.speed * 0.85;
   if(player.slowTimer > 0) speed *= 0.3;
   if(player.activeTimer > 0 && player.heroKey === 'chigiri') speed *= (player.isAwakened ? 1.7 : 1.3);
-  if(player.activeTimer > 0 && player.heroKey === 'kurona') speed *= (player.isAwakened ? 1.3 : 1.1);
   if(player.activeTimer > 0 && player.heroKey === 'bachira') speed *= 1.0; // No speed boost, only pushback
   if(player.activeTimer > 0 && player.heroKey === 'kiyora') speed *= (player.isAwakened ? 1.4 : 1.3);
   speed *= getIsagiDirectShotSpeedMult(player);
@@ -4378,7 +4504,6 @@ function setupInput(){
 function switchHero(){ const current = getActivePlayer(); if(!current) return; const heroes = G.players.filter(p => p.team === 'blue' && p.type === 'hero'); const idx = heroes.indexOf(current); const next = heroes[(idx + 1) % heroes.length]; if(next) switchToHumanPlayer(next); }
 function switchToHumanPlayer(player){ if(!player || player.team !== 'blue' || player.type !== 'hero') return false; const current = getActivePlayer(); if(current === player){ G._cachedHuman = player; return true; } if(current){ current.cancelShotCharge(); current.isHuman = false; } player.isHuman = true; G._cachedHuman = player; updateHeroPanel(player); return true; }
 function updateHumanPlayer(dt){ const p = getActivePlayer(); if(!p) return; suppressControlEffects(p); if(p.stunTimer > 0 || p.nagiCharge > 0 || p.freezeTimer > 0 || p.kiyoraSpinTimer > 0) return; let mx = 0, my = 0; if(keys['KeyW'] || keys['ArrowUp'] || keys['_mW']) my -= 1; if(keys['KeyS'] || keys['ArrowDown'] || keys['_mS']) my += 1; if(keys['KeyA'] || keys['ArrowLeft'] || keys['_mA']) mx -= 1; if(keys['KeyD'] || keys['ArrowRight'] || keys['_mD']) mx += 1; if(mx !== 0 || my !== 0){ const l = Math.hypot(mx, my); mx /= l; my /= l; let speed = p.speed; if(p.activeTimer > 0 && p.heroKey === 'chigiri') speed *= (p.isAwakened ? 1.5 : 1.3);
-  if(p.activeTimer > 0 && p.heroKey === 'kurona') speed *= (p.isAwakened ? 1.1 : 1.05);
   if(p.activeTimer > 0 && p.heroKey === 'bachira') speed *= 1.0;
   if(p.activeTimer > 0 && p.heroKey === 'kiyora') speed *= (p.isAwakened ? 1.4 : 1.3); speed *= getIsagiDirectShotSpeedMult(p); if(p.rivalKey === 'sae' && p.saeFlowTimer > 0) speed *= 1.35; if(p.dashTimer > 0 && p.heroKey === 'yukimiya') speed *= 1.0; if(p.hasBall && p.heroKey !== 'bachira' && p.heroKey !== 'chigiri' && p.heroKey !== 'yukimiya' && p.heroKey !== 'kurona' && p.heroKey !== 'kiyora') speed *= 0.9; if(p.slowTimer > 0) speed *= 0.3; p.vx += mx * speed * 0.2; p.vy += my * speed * 0.2; } }
 
@@ -4570,6 +4695,106 @@ function drawHioriSnowfields(){
   }
 }
 
+function updateKuronaBlackHoles(dt){
+  if(!G.kuronaBlackHoles || !G.kuronaBlackHoles.length) return;
+  let i = G.kuronaBlackHoles.length;
+  while(i--){
+    const f = G.kuronaBlackHoles[i];
+    f.life -= dt;
+    f.spin = (f.spin || 0) + dt * 1.6;
+    if(f.life <= 0){ G.kuronaBlackHoles[i] = G.kuronaBlackHoles[G.kuronaBlackHoles.length - 1]; G.kuronaBlackHoles.pop(); continue; }
+    for(let j = 0; j < G.players.length; j++){
+      const p = G.players[j];
+      if(p.team === f.team) continue;
+      if(f.hit.has(p)) continue;
+      if(p.isControlImmune()) continue;
+      if(dist(p, f) < f.radius + PLAYER_R * p.size){
+        f.hit.add(p);
+        p.slowTimer = Math.max(p.slowTimer, 3.0);
+        spawnParticles(p.x, p.y, '#b026ff', 10);
+        spawnParticles(p.x, p.y, '#00e5ff', 7);
+      }
+    }
+    if(Math.random() < 0.55 && G.particles.length < MAX_PARTICLES){
+      const ang = Math.random() * Math.PI * 2;
+      const r = f.radius * (0.18 + Math.random() * 0.82);
+      spawnParticles(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r, Math.random() < 0.5 ? '#b026ff' : '#00e5ff', 1);
+    }
+  }
+}
+
+function drawKuronaBlackHoles(){
+  if(!G.kuronaBlackHoles || !G.kuronaBlackHoles.length) return;
+  const now = performance.now();
+  for(let i = 0; i < G.kuronaBlackHoles.length; i++){
+    const f = G.kuronaBlackHoles[i];
+    const sx = f.x - camX, sy = f.y - camY;
+    const R = f.radius;
+    if(sx < -R * 1.5 || sx > W / GAME_SCALE + R * 1.5 || sy < -R * 1.5 || sy > H / GAME_SCALE + R * 1.5) continue;
+    const age = f.maxLife - f.life;
+    const fadeIn = clamp(age / 0.22, 0, 1);
+    const fadeOut = clamp(f.life / 0.45, 0, 1);
+    const alpha = Math.min(fadeIn, fadeOut);
+    if(alpha <= 0.01) continue;
+    const pulse = 1 + Math.sin(now * 0.007 + i * 1.7) * 0.035;
+    const rotation = (f.spin || 0) + now * 0.00028;
+    const size = R * 2.25 * pulse;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.globalAlpha = alpha;
+
+    // Purple/cyan gravity glow under the vortex.
+    ctx.globalCompositeOperation = 'lighter';
+    const glow = ctx.createRadialGradient(0, 0, R * 0.08, 0, 0, R * 1.38);
+    glow.addColorStop(0, 'rgba(176,38,255,0.0)');
+    glow.addColorStop(0.32, 'rgba(91,43,255,0.22)');
+    glow.addColorStop(0.62, 'rgba(0,229,255,0.12)');
+    glow.addColorStop(1, 'rgba(0,229,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.38, 0, Math.PI * 2); ctx.fill();
+
+    // Main SVG vortex.
+    ctx.globalCompositeOperation = 'source-over';
+    if(kuronaBlackHoleReady){
+      ctx.save();
+      ctx.rotate(rotation);
+      ctx.drawImage(kuronaBlackHoleCanvas, -size / 2, -size / 2, size, size);
+      ctx.restore();
+      // A smaller counter-rotating layer adds depth without another asset.
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.38;
+      ctx.rotate(-rotation * 0.72);
+      ctx.drawImage(kuronaBlackHoleCanvas, -size * 0.34, -size * 0.34, size * 0.68, size * 0.68);
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = `rgba(176,38,255,${0.8 * alpha})`;
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(0, 0, R * 0.55, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(0, 0, R * 0.25, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Keep the event horizon pitch black even over bright particles.
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = alpha;
+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.34);
+    core.addColorStop(0, 'rgba(0,0,0,1)');
+    core.addColorStop(0.68, 'rgba(0,0,0,0.96)');
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.34, 0, Math.PI * 2); ctx.fill();
+
+    // Slow-pulse containment ring.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.strokeStyle = 'rgba(0,229,255,0.38)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, R * (0.88 + Math.sin(now * 0.004 + i) * 0.03), 0, Math.PI * 2); ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
 function drawNagiSkull(){
   const fx = G.nagiSkull;
   if(!fx || fx.life <= 0) return;
@@ -4751,7 +4976,7 @@ function resetPositions(){
   ];
   let redIdx = 0; const redRoles = ['GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
   G.players.forEach(p => { if(p.team !== 'red') return; const f = redFormation[redIdx]; p.role = redRoles[redIdx]; p.x = f.x; p.y = f.y; resetPlayerState(p); redIdx++; });
-  G.ball.x = cx; G.ball.y = FIELD.y + FIELD.h/2; G.ball.z = 0; G.ball.vx = 0; G.ball.vy = 0; G.ball.vz = 0; G.ball.state = 'free'; G.ball.owner = null; G.ball.passTarget = null; G.ball.perfectHoming = false; G.ball.uninterceptablePass = false; G.ball.lastShooter = null; G.ball.lastPasser = null; G.ball.lastPassTime = 0; G.ball.shotPower = 0; G.ball.spin = 0; G.ball.rotation = 0; G.ball.dribblePhase = 0; G.ball.shidouShot = false; G.ball.shidouGuaranteed = false; G.ball.saeGuaranteed = false; G.ball.massDestructionShot = false; G.ball.nagiAwakened = false; G.ball.isagiAwakened = false; G.ball.rinCurved = false; G.ball.rinFarPostY = 0; G.ball.planetaryHotline = null; G.illusions = []; G.yukimiyaGhosts = []; G.hioriSnowfields = []; G.particles = []; G.trails = []; G.cameraShake = 0; G.recentSave = { team: null, timer: 0 }; G.shidouAnimActive = false; G.shidouAnimTimer = 0; G.shidouAnimPlayer = null;
+  G.ball.x = cx; G.ball.y = FIELD.y + FIELD.h/2; G.ball.z = 0; G.ball.vx = 0; G.ball.vy = 0; G.ball.vz = 0; G.ball.state = 'free'; G.ball.owner = null; G.ball.passTarget = null; G.ball.perfectHoming = false; G.ball.uninterceptablePass = false; G.ball.lastShooter = null; G.ball.lastPasser = null; G.ball.lastPassTime = 0; G.ball.shotPower = 0; G.ball.spin = 0; G.ball.rotation = 0; G.ball.dribblePhase = 0; G.ball.shidouShot = false; G.ball.shidouGuaranteed = false; G.ball.saeGuaranteed = false; G.ball.massDestructionShot = false; G.ball.nagiAwakened = false; G.ball.isagiAwakened = false; G.ball.rinCurved = false; G.ball.rinFarPostY = 0; G.ball.planetaryHotline = null; G.illusions = []; G.yukimiyaGhosts = []; G.hioriSnowfields = []; G.kuronaBlackHoles = []; G.particles = []; G.trails = []; G.cameraShake = 0; G.recentSave = { team: null, timer: 0 }; G.shidouAnimActive = false; G.shidouAnimTimer = 0; G.shidouAnimPlayer = null;
   SFX.whistle(false);
 }
 
@@ -4831,6 +5056,7 @@ function animate(now){
       drawField(); drawParticles();
       drawPowerups();
       drawHioriSnowfields();
+      drawKuronaBlackHoles();
       for(let i = 0; i < G.players.length; i++){ G.players[i].draw(); } G.ball.draw(); drawNagiSkull();
       ctx.restore();
       return;
@@ -4840,6 +5066,7 @@ function animate(now){
       updateGoalReplay(dt);
       updateParticles(dt);
       updateHioriSnowfields(dt);
+      updateKuronaBlackHoles(dt);
       // Camera tracks the ball + blends toward goal area during replay
       const goalCX = G.replayGoalX;
       const goalCY = FIELD.y + FIELD.h/2;
@@ -4860,13 +5087,14 @@ function animate(now){
       if(G.cameraShake > 0){ ctx.translate((Math.random()-0.5)*G.cameraShake, (Math.random()-0.5)*G.cameraShake); }
       drawField(); drawParticles();
       drawHioriSnowfields();
+      drawKuronaBlackHoles();
       for(let i = 0; i < G.players.length; i++){ G.players[i].draw(); } G.ball.draw(); drawNagiSkull();
       ctx.restore();
       return;
     }
     if(!G.goalCelebrating){ G.timeLeft -= dt; if(G.timeLeft <= 0){ G.timeLeft = 0; endGame(); } updateTimerUI(); }
     updateHumanPlayer(dt); for(const p of G.players) updateAI(p, dt); for(const p of G.players) p.update(dt);
-    G.ball.update(dt); updateParticles(dt); updateHioriSnowfields(dt); updateCamera();
+    G.ball.update(dt); updateParticles(dt); updateHioriSnowfields(dt); updateKuronaBlackHoles(dt); updateCamera();
     // === SHIDOU ANIMATION TIMER ===
     if(G.shidouAnimActive){
       G.shidouAnimTimer -= dt;
@@ -4908,6 +5136,7 @@ function animate(now){
   drawField(); drawParticles();
   drawPowerups();
   drawHioriSnowfields();
+  drawKuronaBlackHoles();
   for(let i = 0; i < G.players.length; i++){ G.players[i].draw(); } G.ball.draw(); drawNagiSkull();
   // === SHIDOU ANIMATION VISUAL ===
   if(G.shidouAnimActive && G.shidouAnimPlayer){
@@ -4994,7 +5223,7 @@ function startGame(heroKey){
   G.powerups = []; G.powerupSpawnTimer = 8.0;
   G.combo = {blue:{count:0,timer:0}, red:{count:0,timer:0}};
 G.shidouAnimActive = false; G.shidouAnimTimer = 0; G.shidouAnimPlayer = null;
-  G.yukimiyaGhosts = []; G.particles = []; G.trails = []; G.illusions = []; G.cameraShake = 0;
+  G.yukimiyaGhosts = []; G.particles = []; G.trails = []; G.illusions = []; G.kuronaBlackHoles = []; G.cameraShake = 0;
   G.nagiSkull = null;
   G.recentSave = { team: null, timer: 0 };
   G.scoreBlue = 0; G.scoreRed = 0; G.goalCelebrating = false; G.goalTimer = 0;
