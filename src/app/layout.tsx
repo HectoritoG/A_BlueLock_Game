@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Blue Lock Strikers",
   description:
     "Juego de fútbol inspirado en Blue Lock: elige tu héroe, activa tu despertar y domina la cancha.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
