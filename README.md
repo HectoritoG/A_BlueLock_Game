@@ -12,6 +12,7 @@ Puedes probar el juego aquí:
 
 - Dos partidos jugables con héroes y rivales desbloqueables.
 - Habilidades activas, despertar, disparos cargados y tackles.
+- Efectos visuales de habilidad: cuervo de Karasu y león de Barou.
 - Editor de formación con guardado por héroe y partido.
 - Controles para teclado y dispositivos móviles.
 - Interfaz responsive, minimapa, barra de posesión y pantallas de pausa/fin.
