@@ -5406,8 +5406,8 @@ function drawBarouLionAura(){
     const bob = Math.sin(now * 0.005 + p.y * 0.01) * 4;
     const back = 10;
     const side = p.team === 'red' ? 1 : -1;
-    const bx = sx - Math.cos(p.facingAngle) * back + side * 26;
-    const by = sy - Math.sin(p.facingAngle) * back - 12 + bob;
+    const bx = sx - Math.cos(p.facingAngle) * back + side * 22;
+    const by = sy - Math.sin(p.facingAngle) * back - 28 + bob;
 
     ctx.save();
     ctx.translate(bx, by);
