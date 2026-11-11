@@ -10,17 +10,18 @@ function createRuntime() {
     constants,
     math,
     G: { players: [], ball: null },
-    SFX: {
+    audio: {
       kick() {},
       shoot() {},
       possession() {},
       intercept() {},
-      cheer() {}
+      cheer() {},
+      tackle() {},
+      hit() {},
+      ability() {},
+      awaken() {}
     },
-    ctx: {},
-    charImages: {},
-    camera: { x: 0, y: 0 },
-    viewport: { w: 800, h: 600, scale: 1 },
+    rng: () => 0.5,
     helpers: {
       trackShot() {},
       trackPass() {},
@@ -39,15 +40,15 @@ function createRuntime() {
   };
 }
 
-test('createEntityClasses returns Ball and Player constructors', () => {
+test('createEntityClasses returns simulation-only Ball and Player constructors', () => {
   const { Ball, Player } = createEntityClasses(createRuntime());
 
   assert.equal(typeof Ball, 'function');
   assert.equal(typeof Player, 'function');
   assert.equal(typeof Ball.prototype.update, 'function');
-  assert.equal(typeof Ball.prototype.draw, 'function');
   assert.equal(typeof Player.prototype.update, 'function');
-  assert.equal(typeof Player.prototype.draw, 'function');
+  assert.equal(typeof Ball.prototype.draw, 'undefined');
+  assert.equal(typeof Player.prototype.draw, 'undefined');
 });
 
 test('Ball starts in the middle of the field', () => {
@@ -72,4 +73,11 @@ test('Player loads hero configuration', () => {
   assert.equal(player.speed, constants.HEROES.isagi.speed);
   assert.equal(player.getName(), 'ISAGI');
   assert.equal(player.getNum(), '11');
+});
+
+test('Player normal speed uses the injected RNG', () => {
+  const { Player } = createEntityClasses(createRuntime());
+  const player = new Player(100, 200, 'blue', 'normal', 'normal', 'MID');
+
+  assert.equal(player.speed, 3.7);
 });

@@ -7,10 +7,9 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
 
-  // Browser-facing entity classes. They still contain draw/audio calls and
-  // global game references; the next phases will split those into render and
-  // pure simulation modules. Keeping the dependencies explicit here makes
-  // that split easier to follow.
+  // Browser-facing simulation classes. Rendering lives in render/entities.js.
+  // Audio is injected through runtime.audio and randomness goes through
+  // runtime.rng when a deterministic seed is available.
   function createEntityClasses(runtime) {
     const {
       HEROES,
@@ -36,11 +35,8 @@
       normalize
     } = runtime.math;
     const G = runtime.G;
-    const SFX = runtime.SFX;
-    const ctx = runtime.ctx;
-    const CHAR_IMAGES = runtime.charImages;
-    const camera = runtime.camera;
-    const viewport = runtime.viewport;
+    const audio = runtime.audio || runtime.SFX;
+    const rng = typeof runtime.rng === 'function' ? runtime.rng : () => Math.random();
     const {
       trackShot,
       trackPass,
@@ -238,10 +234,10 @@ class Ball {
       for(const p of G.players){
         if(this.uninterceptablePass) break;
         if(p.team === this.passTarget.team || p.stunTimer > 0) continue;
-        if(p.type === 'goalkeeper' && p.team !== this.passTarget.team){ const d = dist(this, p); if(d < PLAYER_R + BALL_R + 12 && this.z < 15){ this.beOwnedBy(p); spawnParticles(this.x, this.y, '#ffff00', 10); SFX.intercept(); return; } continue; }
+        if(p.type === 'goalkeeper' && p.team !== this.passTarget.team){ const d = dist(this, p); if(d < PLAYER_R + BALL_R + 12 && this.z < 15){ this.beOwnedBy(p); spawnParticles(this.x, this.y, '#ffff00', 10); audio.intercept(); return; } continue; }
         if(this.perfectHoming) continue; // Perfect homing passes cannot be intercepted by field players
         const d = dist(this, p);
-        if(d < PLAYER_R * p.size + BALL_R + 3 && this.z < 10){ this.beOwnedBy(p); spawnParticles(this.x, this.y, '#ff8800', 10); SFX.intercept(); return; }
+        if(d < PLAYER_R * p.size + BALL_R + 3 && this.z < 10){ this.beOwnedBy(p); spawnParticles(this.x, this.y, '#ff8800', 10); audio.intercept(); return; }
       }
     }
 
@@ -261,7 +257,7 @@ class Ball {
             spawnParticles(p.x, p.y, '#00ff88', 30);
             G.cameraShake = 6;
             showAbilityNotif('INTERCEPTED!', '#00ff88');
-            SFX.intercept(); SFX.cheer(0.2);
+            audio.intercept(); audio.cheer(0.2);
             return;
           }
         }
@@ -286,7 +282,7 @@ class Ball {
             // lower speed increase the chance, so clearances do not roll past
             // every NPC until they stop.
             const trapChance = clamp(0.65 - speed * 0.02 + p.ballControl * 0.08, 0.05, 0.85);
-            canControl = Math.random() < trapChance;
+            canControl = rng() < trapChance;
           }
           if(canControl){
             this.beOwnedBy(p);
@@ -298,16 +294,16 @@ class Ball {
     }
 
     if(speed > 3 && this.state !== 'owned' && G.trails.length < 80){ G.trails.push({x:this.x, y:this.y, z:this.z, life:0.3, maxLife:0.3, color:this.massDestructionShot ? '#2dd4a8' : (this.perfectHoming ? '#00ced1' : this.state === 'shot' ? '#ffaa00' : '#ffffff')}); }
-    if(this.perfectHoming && this.state === 'pass' && Math.random() < 0.3 && G.particles.length < MAX_PARTICLES){ spawnParticles(this.x, this.y, '#00ced1', 1); }
+    if(this.perfectHoming && this.state === 'pass' && rng() < 0.3 && G.particles.length < MAX_PARTICLES){ spawnParticles(this.x, this.y, '#00ced1', 1); }
     // MASS DESTRUCTION: Extra epic particles
-    if(this.massDestructionShot && this.state === 'shot' && G.particles.length < MAX_PARTICLES){ spawnParticles(this.x + (Math.random()-0.5)*20, this.y + (Math.random()-0.5)*20, Math.random() < 0.5 ? '#00ffcc' : '#0affce', 1); }
+    if(this.massDestructionShot && this.state === 'shot' && G.particles.length < MAX_PARTICLES){ spawnParticles(this.x + (rng()-0.5)*20, this.y + (rng()-0.5)*20, rng() < 0.5 ? '#00ffcc' : '#0affce', 1); }
   }
 
   beOwnedBy(player){
     const prevTeam = this.owner ? this.owner.team : null;
     if(this.lastPasser && this.lastPasser.team !== player.team){ this.lastPasser = null; this.lastPassTime = 0; }
     const prevOwnerKey = prevTeam ? (prevTeam.heroKey || prevTeam.rivalKey || null) : null; const prevNagiCharging = prevTeam && prevTeam.nagiCharge > 0;
-    this.state = 'owned'; this.owner = player; player.hasBall = true; player.receiveImmunity = player.heroKey === 'nagi' ? 0.5 : 0.2; this.vx = 0; this.vy = 0; this.vz = 0; this.spin = 0; this.nagiAwakened = false; this.isagiAwakened = false; this.shidouShot = false; this.shidouGuaranteed = false; this.saeGuaranteed = false; this.massDestructionShot = false; this.perfectHoming = false; this.uninterceptablePass = false; this.rinCurved = false; this.rinFarPostY = 0; if(prevTeam && prevTeam !== player.team){ SFX.possession(); }
+    this.state = 'owned'; this.owner = player; player.hasBall = true; player.receiveImmunity = player.heroKey === 'nagi' ? 0.5 : 0.2; this.vx = 0; this.vy = 0; this.vz = 0; this.spin = 0; this.nagiAwakened = false; this.isagiAwakened = false; this.shidouShot = false; this.shidouGuaranteed = false; this.saeGuaranteed = false; this.massDestructionShot = false; this.perfectHoming = false; this.uninterceptablePass = false; this.rinCurved = false; this.rinFarPostY = 0; if(prevTeam && prevTeam !== player.team){ audio.possession(); }
   if(player.heroKey === 'isagi' && player.isagiAutoTimer > 0) player.isagiAutoPending = true;
   // KAISER: receiving the ball during Emperor's Route arms an automatic Kaiser Impact.
   if(player.heroKey === 'kaiser' && player.kaiserRouteShotTimer > 0){
@@ -355,7 +351,7 @@ class Ball {
       const goalX = player.team === 'red' ? FIELD.x : FIELD.x + FIELD.w;
       const dToGoal = Math.abs(player.x - goalX);
       const divineChance = player.isAwakened ? 1.0 : 0.65;
-      if(dToGoal < 1200 && Math.random() < divineChance * abMult){
+      if(dToGoal < 1200 && rng() < divineChance * abMult){
         player.useAbility();
       }
     }
@@ -364,7 +360,7 @@ class Ball {
       const abMult = DIFFICULTY[G.difficulty].rivalAbility;
       const goalX = player.team === 'red' ? FIELD.x : FIELD.x + FIELD.w;
       const dToGoal = Math.abs(player.x - goalX);
-      if(dToGoal < 600 && Math.random() < 0.50 * abMult){
+      if(dToGoal < 600 && rng() < 0.50 * abMult){
         player.useAbility();
       }
     }
@@ -439,7 +435,7 @@ class Ball {
         {x:this.x, y:this.y + 25, vx:this.vx, vy:this.vy, life:1.0}
       ];
     }
-    if(isAbility) SFX.shoot(); else SFX.kick();
+    if(isAbility) audio.shoot(); else audio.kick();
     trackShot(shooter);
     addCombo(shooter.team, 'shot', shooter.x, shooter.y);
   }
@@ -462,54 +458,11 @@ class Ball {
     this.rinCurved = false; this.rinFarPostY = 0; this.nagiAwakened = false; this.isagiAwakened = false;
     this.planetaryHotline = null;
     this.lastPasser = passer; this.lastPassTime = performance.now();
-    SFX.kick();
+    audio.kick();
     trackPass(passer);
     addCombo(passer.team, 'pass', passer.x, passer.y);
   }
 
-  draw(){
-    const screenX = this.x - camera.x, screenY = this.y - camera.y;
-    const shadowScale = clamp(1 - this.z * 0.01, 0.3, 1);
-    ctx.fillStyle = `rgba(0,0,0,${0.5 * shadowScale})`;
-    ctx.beginPath(); ctx.ellipse(screenX, screenY + 3, BALL_R * shadowScale, BALL_R * 0.6 * shadowScale, 0, 0, Math.PI * 2); ctx.fill();
-
-    const drawY = screenY - this.z;
-    const speed = Math.hypot(this.vx, this.vy);
-    if(speed > 3){ ctx.shadowColor = this.state === 'shot' ? (this.massDestructionShot ? '#2dd4a8' : (this.shidouGuaranteed || this.saeGuaranteed ? '#ff0000' : (this.shidouShot ? '#ff0000' : '#ff6600'))) : '#ffffff'; ctx.shadowBlur = this.shidouGuaranteed || this.saeGuaranteed || this.massDestructionShot ? 40 : 25; }
-
-    if(this.state === 'owned' && this.owner){
-      const ox = this.owner.x - camera.x, oy = this.owner.y - camera.y;
-      const ownerColor = this.owner.team === 'blue' ? '#00d9ff' : '#ff2e63';
-      ctx.strokeStyle = ownerColor + '80'; ctx.lineWidth = 4; ctx.setLineDash([6,6]);
-      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(screenX, drawY); ctx.stroke(); ctx.setLineDash([]);
-    }
-
-    ctx.fillStyle = this.massDestructionShot ? '#2dd4a8' : '#ffffff'; ctx.strokeStyle = this.massDestructionShot ? '#0affce' : '#111'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(screenX, drawY, BALL_R, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.save(); ctx.translate(screenX, drawY); ctx.rotate(this.rotation);
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    for(let i=0; i<5; i++) {
-      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      const x = Math.cos(a) * BALL_R * 0.45;
-      const y = Math.sin(a) * BALL_R * 0.45;
-      if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath(); ctx.fill();
-    for(let i=0; i<5; i++) {
-      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      const x = Math.cos(a) * BALL_R * 0.8;
-      const y = Math.sin(a) * BALL_R * 0.8;
-      ctx.beginPath();
-      ctx.arc(x, y, BALL_R * 0.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    if(this.z > 2 && !G.nagiSkull){ ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = 'bold 13px Orbitron'; ctx.textAlign = 'center'; ctx.fillText(Math.round(this.z) + 'm', screenX, drawY - BALL_R - 8); }
-  }
 }
 
 class Player {
@@ -557,7 +510,7 @@ class Player {
       this.size = config.size; this.charData = config; this.awakenDuration = config.awakenDuration || 8.0;
     }
     if(type === 'goalkeeper'){ this.speed = 3.5; this.size = charKey === 'gagamaru' ? 1.35 : 1.2; this.ballControl = 1.0; }
-    else if(type === 'normal'){ this.speed = 3.5 + Math.random() * 0.4; this.size = 1.0; }
+    else if(type === 'normal'){ this.speed = 3.5 + rng() * 0.4; this.size = 1.0; }
   }
 
   getConfig(){ if(this.heroKey && HEROES[this.heroKey]) return HEROES[this.heroKey]; if(this.rivalKey && RIVALS[this.rivalKey]) return RIVALS[this.rivalKey]; return null; }
@@ -574,7 +527,7 @@ class Player {
       this.kiyoraSpinAngle += dt * 14;
       this.facingAngle = this.kiyoraSpinAngle % (Math.PI * 2);
       this.vx = 0; this.vy = 0;
-      if(Math.random() < 0.35) spawnParticles(this.x + (Math.random()-0.5)*36, this.y + (Math.random()-0.5)*36, this.isAwakened ? '#ff00ff' : '#00e5a0', 1);
+      if(rng() < 0.35) spawnParticles(this.x + (rng()-0.5)*36, this.y + (rng()-0.5)*36, this.isAwakened ? '#ff00ff' : '#00e5a0', 1);
       if(this.kiyoraSpinTimer <= 0){
         this.kiyoraSpinTimer = 0;
         if(this.kiyoraSpinPassPending){
@@ -627,7 +580,7 @@ class Player {
         this.vx = lerp(this.vx, Math.cos(ballAng) * dashSpeed, 0.35);
         this.vy = lerp(this.vy, Math.sin(ballAng) * dashSpeed, 0.35);
         this.facingAngle = ballAng;
-        if(Math.random() < 0.6) spawnParticles(this.x + (Math.random()-0.5)*18, this.y + (Math.random()-0.5)*18, '#b14aed', 1);
+        if(rng() < 0.6) spawnParticles(this.x + (rng()-0.5)*18, this.y + (rng()-0.5)*18, '#b14aed', 1);
         const canCatch = !G.ball.uninterceptablePass && !G.ball.perfectHoming && G.ball.state !== 'owned' && (G.ball.state !== 'shot' || Math.hypot(G.ball.vx, G.ball.vy) < 12);
         if(canCatch && G.ball.z < 15 && dist(this, G.ball) < PLAYER_R * this.size + BALL_R + 10){
           G.ball.beOwnedBy(this);
@@ -699,7 +652,7 @@ class Player {
           const chargeColor = this.heroKey === 'rin' ? (HEROES.rin.color) : (HEROES.nagi.color);
           const particleCount = this.heroKey === 'rin' ? 30 : 40;
           spawnParticles(this.x, this.y, chargeColor, particleCount);
-          SFX.shoot(); SFX.cheer(0.15);
+          audio.shoot(); audio.cheer(0.15);
           if(offBallTrapShot) showAbilityNotif('TRAP SHOT!', '#b14aed');
         }
       }
@@ -734,7 +687,7 @@ class Player {
       this.vx += (toGoal.x * chargeSpeed) + (perpX * zigzagOff * 0.15);
       this.vy += (toGoal.y * chargeSpeed) + (perpY * zigzagOff * 0.15);
       // Shield visual
-      spawnParticles(this.x + (Math.random()-0.5)*30, this.y + (Math.random()-0.5)*30, '#ffd700', 1);
+      spawnParticles(this.x + (rng()-0.5)*30, this.y + (rng()-0.5)*30, '#ffd700', 1);
       if(this.activeTimer <= 0 || !this.hasBall) this.barouZigzag = false;
     }
 
@@ -751,15 +704,15 @@ class Player {
       this.vx += (forwardX * 0.72 + perpX * zig * 0.9) * dashMult;
       this.vy += (forwardY * 0.72 + perpY * zig * 0.9) * dashMult;
       this.facingAngle = Math.atan2(forwardY + perpY * zig * 0.55, forwardX + perpX * zig * 0.55);
-      if(Math.random() < 0.85){
-        const routeColor = Math.random() < 0.5 ? '#ff4fd8' : '#4fc3f7';
-        spawnParticles(this.x + (Math.random()-0.5)*18, this.y + (Math.random()-0.5)*18, routeColor, 1);
+      if(rng() < 0.85){
+        const routeColor = rng() < 0.5 ? '#ff4fd8' : '#4fc3f7';
+        spawnParticles(this.x + (rng()-0.5)*18, this.y + (rng()-0.5)*18, routeColor, 1);
       }
     }
 
     if(this.isAwakened){
       this.awakeningTimer -= dt;
-      if(Math.random() < 0.5) spawnParticles(this.x, this.y, '#ff00ff', 1);
+      if(rng() < 0.5) spawnParticles(this.x, this.y, '#ff00ff', 1);
       if(this.awakeningTimer <= 0){
         this.isAwakened = false;
         if(this.heroKey === 'nagi'){ this.nagiFakeCount = 0; this.nagiSkullShot = false; }
@@ -801,7 +754,7 @@ class Player {
           this.bachiraVisualX = Math.sin(t * 16) * 18 * Math.cos(perpAng);
           this.bachiraVisualY = Math.sin(t * 16) * 18 * Math.sin(perpAng);
           // Push nearby opponents
-          if(Math.random() < 0.15){
+          if(rng() < 0.15){
             for(const p of G.players){
               if(p.team === this.team) continue;
               if(dist(this, p) < 90){
@@ -824,7 +777,7 @@ class Player {
           this.bachiraVisualX = Math.cos(goalAng) * fwdAmt;
           this.bachiraVisualY = Math.sin(goalAng) * fwdAmt;
           // Bigger push
-          if(Math.random() < 0.2){
+          if(rng() < 0.2){
             for(const p of G.players){
               if(p.team === this.team) continue;
               if(dist(this, p) < 100){
@@ -849,7 +802,7 @@ class Player {
           const lunge = Math.sin(t * Math.PI) * 42;
           this.bachiraVisualX = Math.cos(goalAng) * lunge;
           this.bachiraVisualY = Math.sin(goalAng) * lunge;
-          if(Math.random() < 0.35){
+          if(rng() < 0.35){
             for(const p of G.players){
               if(p.team === this.team) continue;
               if(dist(this, p) < 120){
@@ -860,7 +813,7 @@ class Player {
               }
             }
           }
-          if(this.hasBall && Math.random() < 0.35 && G.particles.length < MAX_PARTICLES){
+          if(this.hasBall && rng() < 0.35 && G.particles.length < MAX_PARTICLES){
             spawnParticles(G.ball.x, G.ball.y - 30, '#ffd700', 1);
           }
           if(this.bachiraComboTimer >= 1.0){
@@ -875,7 +828,7 @@ class Player {
           this.bachiraVisualX = Math.sin(t * 14) * 14 * Math.cos(perpAng);
           this.bachiraVisualY = Math.sin(t * 14) * 14 * Math.sin(perpAng);
           // Push opponents
-          if(Math.random() < 0.12){
+          if(rng() < 0.12){
             for(const p of G.players){
               if(p.team === this.team) continue;
               if(dist(this, p) < 80){
@@ -921,7 +874,7 @@ class Player {
           const t = this.saeComboTimer;
           this.saeVisualX = Math.sin(t * 18) * 18 * Math.cos(saePerpAng);
           this.saeVisualY = Math.sin(t * 18) * 18 * Math.sin(saePerpAng);
-          if(Math.random() < 0.18) saePush(95, 7, 0.35);
+          if(rng() < 0.18) saePush(95, 7, 0.35);
           if(this.saeComboTimer >= 0.8){
             this.saeComboPhase = 1; this.saeComboTimer = 0;
             showAbilityNotif('HEEL LIFT!', '#ff8c00');
@@ -933,7 +886,7 @@ class Player {
           const lunge = Math.sin(t * Math.PI) * 42;
           this.saeVisualX = Math.cos(saeGoalAng) * lunge;
           this.saeVisualY = Math.sin(saeGoalAng) * lunge;
-          if(Math.random() < 0.28) saePush(115, 10, 0.55);
+          if(rng() < 0.28) saePush(115, 10, 0.55);
           if(this.saeComboTimer >= 0.8){
             this.saeComboPhase = 2; this.saeComboTimer = 0;
             this.vx += Math.cos(saeGoalAng) * 8;
@@ -948,7 +901,7 @@ class Player {
           const feint = Math.sin(t * 16) * 16;
           this.saeVisualX = Math.cos(saeGoalAng) * feint;
           this.saeVisualY = Math.sin(saeGoalAng) * feint;
-          if(Math.random() < 0.22) saePush(105, 8, 0.45);
+          if(rng() < 0.22) saePush(105, 8, 0.45);
           if(this.saeComboTimer >= 0.8){
             this.saeCombo = false; this.saeBallImmune = 0;
             const gk = G.players.find(p => p.team !== this.team && p.type === 'goalkeeper');
@@ -960,7 +913,7 @@ class Player {
             G.cameraShake = 16;
             spawnParticles(this.x, this.y, '#ff8c00', 45);
             showAbilityNotif('DIVINE DESTRUCTION!', '#ff8c00');
-            SFX.shoot(); SFX.cheer(0.35);
+            audio.shoot(); audio.cheer(0.35);
           }
         }
       }
@@ -1000,12 +953,12 @@ class Player {
           if(opp.receiveImmunity > 0) chance = 0; // Brief immunity after receiving the ball
           if(opp.nagiCharge > 0 && opp.heroKey === 'nagi') chance = 0; // Nagi charge immune
           if(opp.nagiCharge > 0 && opp.heroKey === 'rin' && opp.isAwakened) chance = 0; // Awakened Rin time-freeze charge immune
-          if(Math.random() < chance){
+          if(rng() < chance){
             opp.hasBall = false; G.ball.beOwnedBy(this); spawnParticles(this.x, this.y, '#00ff88', 15);
-            this.tackleActive = 0; SFX.tackle(); trackTackle(this); addCombo(this.team, 'tackle', this.x, this.y); return;
+            this.tackleActive = 0; audio.tackle(); trackTackle(this); addCombo(this.team, 'tackle', this.x, this.y); return;
           } else {
             this.stunTimer = 0.5; spawnParticles(this.x, this.y, '#ff4444', 8);
-            this.tackleActive = 0; SFX.hit(); return;
+            this.tackleActive = 0; audio.hit(); return;
           }
         }
       }
@@ -1057,7 +1010,7 @@ class Player {
     this.vx += dashDir.x * dashPower;
     this.vy += dashDir.y * dashPower;
     spawnParticles(this.x, this.y, '#ff8c00', 10);
-    SFX.tackle();
+    audio.tackle();
     return true;
   }
 
@@ -1091,7 +1044,7 @@ class Player {
       spawnParticles(this.x, this.y, '#b14aed', 18);
       showAbilityNotif('FAKE VOLLEY!', '#b14aed');
     }
-    SFX.hit();
+    audio.hit();
   }
 
   spawnYukimiyaBoba(){
@@ -1102,7 +1055,7 @@ class Player {
     const ghostSpeed = this.speed * (this.isAwakened ? 0.65 : 1.2);
     const ghostAng = goalAng + spread;
     // Every boba includes the same sideways dash as the normal ability.
-    const dashAng = goalAng + (Math.random() < 0.5 ? Math.PI/2 : -Math.PI/2);
+    const dashAng = goalAng + (rng() < 0.5 ? Math.PI/2 : -Math.PI/2);
     this.vx += Math.cos(dashAng) * 15;
     this.vy += Math.sin(dashAng) * 15;
     this.dashTimer = Math.max(this.dashTimer, config.activeDuration);
@@ -1162,7 +1115,7 @@ class Player {
     // so it does start the cooldown even while awakened.
     this.activeCd = (this.heroKey === 'nagi' && this.isAwakened && !offBallNagiTrap) ? 0 : config.activeCooldown;
     if(this.heroKey !== 'kaiser' && this.rivalKey !== 'sae' && !offBallNagiTrap) showAbilityNotif((this.isAwakened ? 'AWAKENED ' : '') + config.active, this.isAwakened ? '#ff00ff' : config.color);
-    SFX.ability();
+    audio.ability();
     
     if(this.heroKey === 'bachira'){
       // BACHIRA: Scissors Dribble (Normal) / Elastic Sombrero Combo (Awakened)
@@ -1211,7 +1164,7 @@ class Player {
         life: 3.0, maxLife: 3.0,
         team: this.team,
         hit: new Set(),
-        spin: Math.random() * Math.PI * 2
+        spin: rng() * Math.PI * 2
       });
       spawnParticles(this.x, this.y, '#b026ff', 24);
       spawnParticles(this.x, this.y, '#00e5ff', 18);
@@ -1255,7 +1208,7 @@ class Player {
       this.spawnYukimiyaBoba();
       spawnParticles(this.x, this.y, this.isAwakened ? '#ff00ff' : config.color, 30);
       showAbilityNotif(this.isAwakened ? 'PHANTOM FEINT x3!' : 'LA BOBA!', this.isAwakened ? '#ff00ff' : config.color);
-      SFX.ability();
+      audio.ability();
     }
     else if(this.heroKey === 'nagi'){
       if(!this.hasBall){
@@ -1429,7 +1382,7 @@ class Player {
           spawnParticles(this.x, this.y, '#ff8c00', 18);
           showAbilityNotif('OFF BALANCE!', '#7ffcff');
           G.cameraShake = Math.max(G.cameraShake || 0, 7);
-          SFX.ability(); SFX.hit();
+          audio.ability(); audio.hit();
           return true;
         }
         // GENIUS FLOW: awakening + speed boost, but with a longer cooldown.
@@ -1441,7 +1394,7 @@ class Player {
         spawnParticles(this.x, this.y, '#ff8c00', 40);
         showAbilityNotif('GENIUS FLOW!', '#ff8c00');
         G.cameraShake = Math.max(G.cameraShake || 0, 8);
-        SFX.awaken(); SFX.cheer(0.25);
+        audio.awaken(); audio.cheer(0.25);
         return true;
       }
       // SAE ON-BALL AWAKENED: Divine Destruction dribble + shot combo.
@@ -1455,7 +1408,7 @@ class Player {
         spawnParticles(this.x, this.y, '#ff8c00', 35);
         showAbilityNotif('TIJERAS!', '#ff8c00');
         G.cameraShake = Math.max(G.cameraShake || 0, 10);
-        SFX.ability(); SFX.cheer(0.3);
+        audio.ability(); audio.cheer(0.3);
         return true;
       }
       // SAE ON-BALL BASE: Genius Command — stun, dribble push, and pass to Shidou.
@@ -1488,7 +1441,7 @@ class Player {
       G.cameraShake = 8;
       spawnParticles(this.x, this.y, '#ff8c00', 40);
       showAbilityNotif('GENIUS COMMAND!', '#ff8c00');
-      SFX.ability(); SFX.cheer(0.25);
+      audio.ability(); audio.cheer(0.25);
     }
     else if(this.rivalKey === 'shidou'){
       // Shidou animation
@@ -1516,7 +1469,7 @@ class Player {
           G.cameraShake = 18;
           for(let i = 0; i < 40; i++) spawnParticles(this.x, this.y, '#ff0000', 2);
           showAbilityNotif('🔥 WILD KING GUARANTEED 🔥', '#ff0000');
-          SFX.shoot(); SFX.cheer(0.35);
+          audio.shoot(); audio.cheer(0.35);
           return true;
         }
       }
@@ -1552,7 +1505,7 @@ class Player {
       G.cameraShake = 10;
       spawnParticles(this.x, this.y, '#ff8c00', 35);
       showAbilityNotif(this.isAwakened ? 'POWER DASH!' : 'POWER DASH!', this.isAwakened ? '#ff00ff' : '#ff8c00');
-      SFX.ability();
+      audio.ability();
     }
     else if(this.rivalKey === 'karasu' || this.rivalKey === 'reo'){ 
       this.dashTimer = config.activeDuration;
@@ -1598,10 +1551,10 @@ class Player {
             if(owner.receiveImmunity > 0) stealChance = 0;
             if(owner.nagiCharge > 0 && owner.heroKey === 'nagi') stealChance = 0; // Nagi charge immune
             if(owner.nagiCharge > 0 && owner.heroKey === 'rin' && owner.isAwakened) stealChance = 0; // Awakened Rin time-freeze charge immune
-            if(Math.random() < stealChance){
+            if(rng() < stealChance){
               owner.hasBall = false; G.ball.beOwnedBy(this);
               spawnParticles(this.x, this.y, '#b14aed', 20);
-              SFX.tackle();
+              audio.tackle();
               // Immediately look for a forward to pass to
               const forwards = G.players.filter(p => p.team === this.team && p !== this && p.type !== 'goalkeeper' && p.role === 'FWD');
               const target = forwards.length > 0 ? forwards.reduce((best, f) => {
@@ -1626,7 +1579,7 @@ class Player {
       this.barouZigzag = true;
       spawnParticles(this.x, this.y, '#ffd700', 35);
       showAbilityNotif('CHARGING KING!', '#ffd700');
-      SFX.ability();
+      audio.ability();
     }
     else if(this.rivalKey === 'otoya'){ const dir = this.team === 'red' ? -1 : 1; this.x += dir * (this.isAwakened ? 180 : 100); this.x = clamp(this.x, FIELD.x + PLAYER_R, FIELD.x + FIELD.w - PLAYER_R); spawnParticles(this.x, this.y, config.color, 15); }
     // === NEW HERO ABILITIES ===
@@ -1702,7 +1655,7 @@ class Player {
         if(owner && owner.team !== this.team) owner.hasBall = false;
         const clearGoalX = this.team === 'blue' ? FIELD.x + FIELD.w : FIELD.x;
         let clearAng = angleTo(this, {x: clearGoalX, y: FIELD.y + FIELD.h/2});
-        clearAng += (Math.random() - 0.5) * 0.5;
+        clearAng += (rng() - 0.5) * 0.5;
         G.ball.state = 'free'; G.ball.owner = null; G.ball.passTarget = null;
         G.ball.perfectHoming = false; G.ball.uninterceptablePass = false;
         G.ball.x = this.x + Math.cos(clearAng) * (PLAYER_R * this.size + BALL_R + 2);
@@ -1714,7 +1667,7 @@ class Player {
       }
       if(awakened){
         for(let i = 0; i < 3; i++){
-          G.illusions.push({x:this.x, y:this.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1.2, maxLife:1.2});
+          G.illusions.push({x:this.x, y:this.y, vx:(rng()-0.5)*4, vy:(rng()-0.5)*4, life:1.2, maxLife:1.2});
         }
       }
       spawnParticles(this.x, this.y, awakened ? '#ff00ff' : '#00e5a0', 24);
@@ -1727,7 +1680,7 @@ class Player {
       const goalX = this.team === 'blue' ? FIELD.x + FIELD.w : FIELD.x;
       const goalAng = angleTo(this, {x: goalX, y: FIELD.y + FIELD.h/2});
       this.vx += Math.cos(goalAng) * 14; this.vy += Math.sin(goalAng) * 14;
-      spawnParticles(this.x, this.y, config.color, 15); SFX.ability();
+      spawnParticles(this.x, this.y, config.color, 15); audio.ability();
     }
     // === NEW RIVAL ABILITIES ===
     else if(this.rivalKey === 'snuffy'){
@@ -1739,7 +1692,7 @@ class Player {
       this.tackleCd = 2.0; this.tackleActive = 0.5;
       const dashDir = (Math.hypot(this.vx, this.vy) > 0.1) ? normalize({x:this.vx, y:this.vy}) : {x:Math.cos(this.facingAngle), y:Math.sin(this.facingAngle)};
       this.vx += dashDir.x * 25; this.vy += dashDir.y * 25;
-      spawnParticles(this.x, this.y, '#ff66aa', 12); SFX.tackle();
+      spawnParticles(this.x, this.y, '#ff66aa', 12); audio.tackle();
     }
     else if(this.rivalKey === 'niko'){
       for(const p of G.players){ if(p.team !== this.team && !p.isControlImmune() && dist(this, p) < 200){ p.slowTimer = Math.max(p.slowTimer, this.isAwakened ? 3.0 : 2.0); } }
@@ -1789,7 +1742,7 @@ class Player {
         G.ball.massDestructionShot = true; // Turquoise-green visual
         G.cameraShake = 22;
         showAbilityNotif('⚡ MASS DESTRUCTION ⚡', '#2dd4a8');
-        SFX.shoot(); SFX.cheer(0.35);
+        audio.shoot(); audio.cheer(0.35);
       } else {
         // Normal: Same as playable Rin's AWAKENED ability (mini dash + stun + curved shot)
         const dashDir = (Math.hypot(this.vx, this.vy) > 0.1) ? normalize({x:this.vx, y:this.vy}) : {x:Math.cos(this.facingAngle), y:Math.sin(this.facingAngle)};
@@ -1808,7 +1761,7 @@ class Player {
         G.cameraShake = 10;
         spawnParticles(this.x, this.y, '#2dd4a8', 30);
         showAbilityNotif('PULVERIZE!', '#2dd4a8');
-        SFX.ability();
+        audio.ability();
       }
     }
     else if(this.rivalKey === 'loki'){
@@ -1821,12 +1774,12 @@ class Player {
       this.vy += Math.sin(goalAng) * burstSpeed;
       // Afterimages
       for(let i = 0; i < (this.isAwakened ? 3 : 1); i++){
-        G.illusions.push({x:this.x, y:this.y, vx:(Math.random()-0.5)*2, vy:(Math.random()-0.5)*2, life:1.5, maxLife:1.5});
+        G.illusions.push({x:this.x, y:this.y, vx:(rng()-0.5)*2, vy:(rng()-0.5)*2, life:1.5, maxLife:1.5});
       }
       spawnParticles(this.x, this.y, '#00e5ff', 25);
       G.cameraShake = 5;
       showAbilityNotif(this.isAwakened ? 'PHANTOM GOD!' : 'PHANTOM SPRINT!', '#00e5ff');
-      SFX.ability();
+      audio.ability();
     }
     else if(this.rivalKey === 'charles'){
       // Charles Chevalier: Perfect pass to Loki or Shidou (speed boost to receiver)
@@ -1847,7 +1800,7 @@ class Player {
         spawnParticles(this.x, this.y, '#e0e060', 15);
         showAbilityNotif('LASER PASS!', '#e0e060');
       }
-      SFX.ability();
+      audio.ability();
     }
     else if(this.rivalKey === 'nanase'){
       // Nanase: Interceptable pass to Rin PXG that gives 1s shield
@@ -1866,7 +1819,7 @@ class Player {
         spawnParticles(this.x, this.y, '#88ccaa', 10);
         showAbilityNotif('SHIELD PASS!', '#88ccaa');
       }
-      SFX.ability();
+      audio.ability();
     }
     else if(this.rivalKey === 'tokimitsu'){
       // Tokimitsu: Same as Kunigami rival (power dash + push + stun)
@@ -1892,7 +1845,7 @@ class Player {
       G.cameraShake = 10;
       spawnParticles(this.x, this.y, '#44aa44', 35);
       showAbilityNotif(this.isAwakened ? 'HERO SHOT!' : 'POWER DASH!', this.isAwakened ? '#ff00ff' : '#44aa44');
-      SFX.ability();
+      audio.ability();
     }
     else if(this.rivalKey === 'zantetsu'){
       // Zantetsu: Same as Otoya (teleport forward)
@@ -1901,7 +1854,7 @@ class Player {
       this.x = clamp(this.x, FIELD.x + PLAYER_R, FIELD.x + FIELD.w - PLAYER_R);
       spawnParticles(this.x, this.y, config.color, 15);
       showAbilityNotif(this.isAwakened ? 'SHADOW NINJA!' : 'SHADOW STEP!', config.color);
-      SFX.ability();
+      audio.ability();
     }
     return true;
   }
@@ -1958,7 +1911,7 @@ class Player {
       }
     }
     
-    if(!isAbility){ const d = dist(this, {x:goalX, y:goalY}); const noise = (1 - clamp(accuracy, 0, 1.5)) * 0.15 * (d / 400); angle += (Math.random() - 0.5) * noise; }
+    if(!isAbility){ const d = dist(this, {x:goalX, y:goalY}); const noise = (1 - clamp(accuracy, 0, 1.5)) * 0.15 * (d / 400); angle += (rng() - 0.5) * noise; }
     let power, height, curve;
     if(isAbility){
       if(this.heroKey === 'rin'){
@@ -2044,8 +1997,8 @@ class Player {
       const chargeAmount = clamp(charge, 0, 1);
       const chargeMult = SHOT_MIN_POWER + (1 - SHOT_MIN_POWER) * chargeAmount;
       power = clamp(10 * this.shotPower, 8, 16) * chargeMult;
-      height = (Math.random() < 0.3 ? 3 + Math.random() * 4 : 1) * (0.45 + 0.55 * chargeAmount);
-      curve = (Math.random() - 0.5) * 0.6 * this.shotAccuracy;
+      height = (rng() < 0.3 ? 3 + rng() * 4 : 1) * (0.45 + 0.55 * chargeAmount);
+      curve = (rng() - 0.5) * 0.6 * this.shotAccuracy;
     }
     
     // Skip normal shoot if guaranteed shot is already set (Shidou awaken)
@@ -2069,7 +2022,7 @@ class Player {
       spawnParticles(this.x, this.y, '#00e5ff', 40);
       for(let i = 0; i < 10; i++){ G.trails.push({x:G.ball.x, y:G.ball.y, z:G.ball.z, life:0.7, maxLife:0.7, color:'#00e5ff'}); }
       showAbilityNotif('FIVE STAGE VOLLEY', '#00e5ff');
-      SFX.ability();
+      audio.ability();
     }
     
     // Rin curved shot: set homing target to far post based on shooter position
@@ -2153,149 +2106,6 @@ class Player {
     return nearest;
   }
 
-  draw(){
-    const screenX = (this.x + this.bachiraVisualX + this.saeVisualX) - camera.x, screenY = (this.y + this.bachiraVisualY + this.saeVisualY) - camera.y;
-    if(screenX < -80 || screenX > (viewport.w / viewport.scale) + 80 || screenY < -80 || screenY > (viewport.h / viewport.scale) + 80) return;
-
-    const baseColor = this.getColor();
-    const teamBaseColor = this.team === 'blue' ? '#00d9ff' : '#ff2e63';
-    const r = PLAYER_R * this.size;
-
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(screenX, screenY + 4, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-
-    if(this.isAwakened){
-      ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 25;
-      const pulse = 0.4 + Math.sin(Date.now() * 0.01) * 0.2;
-      ctx.fillStyle = `rgba(255,0,255,${pulse})`;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 20 + Math.sin(Date.now()*0.008)*5, 0, Math.PI * 2); ctx.fill();
-    } else if(this.activeTimer > 0 || this.dashTimer > 0 || this.interceptActive > 0){
-      ctx.shadowColor = baseColor; ctx.shadowBlur = 15;
-      ctx.fillStyle = baseColor + '50';
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 15 + Math.sin(Date.now()*0.008)*4, 0, Math.PI * 2); ctx.fill();
-    }
-
-    if(this.kiyoraSpinTimer > 0){
-      const spinColor = this.isAwakened ? '#ff00ff' : '#00e5a0';
-      ctx.strokeStyle = spinColor;
-      ctx.lineWidth = 4;
-      for(let i = 0; i < 3; i++){
-        const a = this.facingAngle + i * (Math.PI * 2 / 3);
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, r + 12 + i * 4, a, a + 1.2);
-        ctx.stroke();
-      }
-    }
-
-    if(this.heroKey === 'isagi' && this.isagiAutoTimer > 0){
-      const armedPulse = 0.55 + Math.sin(Date.now() * 0.014) * 0.25;
-      ctx.strokeStyle = this.isAwakened ? `rgba(255,0,255,${armedPulse})` : `rgba(79,195,247,${armedPulse})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 9, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    if(this.slowTimer > 0 || this.kuronaSlowTimer > 0){
-      ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 20;
-      ctx.strokeStyle = '#ff8c00'; ctx.lineWidth = 3; ctx.setLineDash([6,6]);
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 12, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    if(this.freezeTimer > 0){
-      ctx.strokeStyle = 'rgba(0,229,255,0.85)'; ctx.lineWidth = 2; ctx.setLineDash([4,5]);
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 14, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    if(this.commandRun > 0){
-      ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 25;
-      ctx.strokeStyle = '#ff8c00'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 18, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    if(this.hasBall){
-      ctx.shadowColor = '#ffff00'; ctx.shadowBlur = 15;
-      ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 10, 0, Math.PI * 2); ctx.stroke();
-    }
-    
-    if(this.isHuman){
-      ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 10;
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 15, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    if(this.tackleActive > 0){
-      ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 25;
-      ctx.strokeStyle = '#ff8c00'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 18, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    if(this.interceptActive > 0){
-      ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 30;
-      ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 18 + Math.sin(Date.now()*0.01)*3, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    if(this.shieldTimer > 0){
-      ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 25;
-      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 3; ctx.setLineDash([8,4]);
-      ctx.beginPath(); ctx.arc(screenX, screenY, r + 14 + Math.sin(Date.now()*0.006)*4, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    ctx.shadowBlur = 0;
-
-    const drawY = this.nagiCharge > 0 ? screenY - 25 : screenY;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(screenX, drawY, r, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-
-    // === LÓGICA DE IMAGEN DESPERTADO ===
-    let imgKey = this.charKey;
-    const awakenKey = this.charKey + '_awaken';
-    const awakenImg = CHAR_IMAGES[awakenKey];
-    if(this.isAwakened && awakenImg && awakenImg.complete && awakenImg.naturalWidth !== 0) imgKey = awakenKey;
-
-    const img = CHAR_IMAGES[imgKey];
-    if(img && img.complete && img.naturalWidth !== 0){
-      ctx.drawImage(img, screenX - r, drawY - r, r*2, r*2);
-    } else {
-      ctx.fillStyle = teamBaseColor;
-      ctx.fillRect(screenX - r, drawY - r, r*2, r*2);
-    }
-    ctx.restore();
-
-    ctx.strokeStyle = this.team === 'blue' ? '#003355' : '#550022';
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(screenX, drawY, r, 0, Math.PI * 2); ctx.stroke();
-
-    const dirX = screenX + Math.cos(this.facingAngle) * (r + 5);
-    const dirY = drawY + Math.sin(this.facingAngle) * (r + 5);
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(screenX, drawY); ctx.lineTo(dirX, dirY); ctx.stroke();
-
-    const showText = !img || !img.complete || img.naturalWidth === 0;
-    if(showText){
-      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${Math.round(r * 0.8)}px Orbitron`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(this.getNum(), screenX, drawY);
-    }
-    
-    ctx.fillStyle = this.isAwakened ? '#ff00ff' : baseColor; 
-    ctx.font = 'bold 13px Orbitron'; ctx.textAlign = 'center';
-    ctx.fillText(this.getName(), screenX, drawY - r - 15);
-
-    if(this.heroKey === 'nagi' && this.isAwakened && this.nagiFakeCount > 0){
-      ctx.fillStyle = '#00e5ff';
-      ctx.font = 'bold 11px Orbitron';
-      ctx.fillText('VOLLEY ' + this.nagiFakeCount + '/4', screenX, drawY - r - 30);
-    }
-
-    if(this.stunTimer > 0){ ctx.fillStyle = '#ffaa00'; ctx.font = '20px Arial'; ctx.fillText('★', screenX + r * 0.5, drawY - r); }
-  }
 }
 
     return { Ball, Player };

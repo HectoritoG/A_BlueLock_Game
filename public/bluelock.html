@@ -664,6 +664,7 @@
 <script src="./game/core/rng.js"></script>
 <script src="./game/core/match-state.js"></script>
 <script src="./game/entities.js"></script>
+<script src="./game/render/entities.js"></script>
 <script>
 // === SHARED CORE (classic bridge until main.js is modularized) ===
 const {
@@ -3348,7 +3349,7 @@ function animate(now){
       drawKuronaBlackHoles();
       drawKarasuCrow();
       drawBarouLionAura();
-      for(let i = 0; i < G.players.length; i++){ G.players[i].draw(); } G.ball.draw(); drawNagiSkull();
+      for(let i = 0; i < G.players.length; i++){ drawPlayer(G.players[i]); } drawBall(G.ball); drawNagiSkull();
       ctx.restore();
       return;
     }
@@ -3383,7 +3384,7 @@ function animate(now){
       drawKuronaBlackHoles();
       drawKarasuCrow();
       drawBarouLionAura();
-      for(let i = 0; i < G.players.length; i++){ G.players[i].draw(); } G.ball.draw(); drawNagiSkull();
+      for(let i = 0; i < G.players.length; i++){ drawPlayer(G.players[i]); } drawBall(G.ball); drawNagiSkull();
       ctx.restore();
       return;
     }
@@ -3434,7 +3435,7 @@ function animate(now){
   drawKuronaBlackHoles();
   drawKarasuCrow();
   drawBarouLionAura();
-  for(let i = 0; i < G.players.length; i++){ G.players[i].draw(); } G.ball.draw(); drawNagiSkull();
+  for(let i = 0; i < G.players.length; i++){ drawPlayer(G.players[i]); } drawBall(G.ball); drawNagiSkull();
   // === SHIDOU ANIMATION VISUAL ===
   if(G.shidouAnimActive && G.shidouAnimPlayer){
     const sp = G.shidouAnimPlayer;
@@ -3863,12 +3864,25 @@ if(typeof CHAR_IMAGES !== 'undefined') initCardImages();
 setupFormationEditor();
 setupInput();
 resizeCanvas();
-// === ENTITY CLASSES (browser layer until rendering is split out) ===
+// === ENTITY CLASSES (simulation layer) ===
 const { Ball, Player } = window.BLEntities.createEntityClasses({
   constants: window.BLConstants,
   math: window.BLMath,
   G,
-  SFX,
+  audio: SFX,
+  helpers: {
+    trackShot, trackPass, trackTackle, trackGoal, addCombo,
+    suppressControlEffects, moveToward, switchToHumanPlayer,
+    spawnParticles, triggerGoal, grantAwakening, updateShotChargeUI,
+    showAbilityNotif
+  }
+});
+
+// === ENTITY RENDERER ===
+const entityRenderer = window.BLEntityRenderer.createEntityRenderer({
+  constants: window.BLConstants,
+  math: window.BLMath,
+  G,
   ctx,
   charImages: CHAR_IMAGES,
   camera: {
@@ -3879,14 +3893,10 @@ const { Ball, Player } = window.BLEntities.createEntityClasses({
     get w() { return W; },
     get h() { return H; },
     get scale() { return GAME_SCALE; }
-  },
-  helpers: {
-    trackShot, trackPass, trackTackle, trackGoal, addCombo,
-    suppressControlEffects, moveToward, switchToHumanPlayer,
-    spawnParticles, triggerGoal, grantAwakening, updateShotChargeUI,
-    showAbilityNotif
   }
 });
+const drawBall = entityRenderer.drawBall;
+const drawPlayer = entityRenderer.drawPlayer;
 
 </script>
 </body>
