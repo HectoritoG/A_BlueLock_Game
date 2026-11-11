@@ -34,14 +34,16 @@ function createHarness(player, overrides) {
     players: []
   }, (overrides && overrides.G) || {});
   const keys = {};
-  const actions = {
+  const remoteCalls = [];
+  const actions = Object.assign({
     pauseCalls: 0,
     switchCalls: 0,
     awakenCalls: 0,
     togglePause() { this.pauseCalls++; },
     switchHero() { this.switchCalls++; },
-    grantAwakening() { this.awakenCalls++; }
-  };
+    grantAwakening() { this.awakenCalls++; },
+    remote(action) { remoteCalls.push(action); }
+  }, (overrides && overrides.actions) || {});
   const input = createInput({
     G,
     keys,
@@ -49,11 +51,13 @@ function createHarness(player, overrides) {
     getActivePlayer: () => player,
     dist: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
     HEROES: {},
+    RIVALS: {},
     actions,
+    isRemote: overrides && overrides.isRemote,
     window: overrides && overrides.window,
     document: null
   });
-  return { G, keys, actions, input };
+  return { G, keys, actions, remoteCalls, input };
 }
 
 test('Escape toggles pause', () => {
@@ -101,6 +105,37 @@ test('pass and awakening actions use the injected callbacks', () => {
 
   input.handleKeyDown({ code: 'KeyR', preventDefault() {} });
   assert.equal(actions.awakenCalls, 1);
+});
+
+test('remote mode forwards actions without mutating the guest player', () => {
+  const player = createPlayer({ hasBall: true, awakening: 100 });
+  const { input, actions, remoteCalls, G } = createHarness(player, { isRemote: true });
+
+  input.handleKeyDown({ code: 'KeyE', preventDefault() {} });
+  input.handleKeyDown({ code: 'Space', preventDefault() {} });
+  input.handleKeyDown({ code: 'ShiftLeft', preventDefault() {} });
+  input.handleKeyUp({ code: 'ShiftLeft' });
+  input.handleKeyDown({ code: 'KeyF', preventDefault() {} });
+  input.handleKeyDown({ code: 'KeyR', preventDefault() {} });
+  input.handleKeyDown({ code: 'KeyQ', preventDefault() {} });
+  input.handleKeyDown({ code: 'Escape', preventDefault() {} });
+
+  assert.deepEqual(remoteCalls, [
+    'ability', 'pass', 'shootStart', 'shootRelease', 'tackle', 'awaken', 'switch', 'pause'
+  ]);
+  assert.equal(player.used, 0);
+  assert.equal(player.passed, 0);
+  assert.equal(player.started, 0);
+  assert.equal(player.released, 0);
+  assert.equal(player.tackled, 0);
+  assert.equal(player.cancelled, 0);
+  assert.equal(actions.pauseCalls, 0);
+  assert.equal(actions.switchCalls, 0);
+  assert.equal(actions.awakenCalls, 0);
+
+  G.paused = true;
+  input.handleKeyUp({ code: 'ShiftLeft' });
+  assert.equal(remoteCalls[remoteCalls.length - 1], 'shootCancel');
 });
 
 test('setup registers keyboard listeners and cleanup removes them', () => {

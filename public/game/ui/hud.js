@@ -12,6 +12,7 @@
   function createHud(runtime) {
     const G = runtime.G;
     const HEROES = runtime.HEROES;
+    const RIVALS = runtime.RIVALS || {};
     const FIELD = runtime.FIELD;
     const POWERUP_TYPES = runtime.POWERUP_TYPES;
     const clamp = runtime.clamp;
@@ -40,8 +41,8 @@
     }
 
     function updateHeroPanel(p) {
-      if (!doc || !p || !p.heroKey) return;
-      const h = HEROES[p.heroKey];
+      if (!doc || !p) return;
+      const h = p.heroKey ? HEROES[p.heroKey] : (p.rivalKey ? RIVALS[p.rivalKey] : null);
       if (!h) return;
       const name = doc.getElementById('hpName');
       const passive = doc.getElementById('hpPassive');
@@ -56,8 +57,8 @@
     function updateCooldownUI() {
       if (!doc) return;
       const p = getActivePlayer();
-      if (!p || !p.heroKey) return;
-      const h = HEROES[p.heroKey];
+      if (!p) return;
+      const h = p.heroKey ? HEROES[p.heroKey] : (p.rivalKey ? RIVALS[p.rivalKey] : null);
       if (!h) return;
       const fill = doc.getElementById('cdFill');
       if (fill) {

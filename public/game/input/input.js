@@ -16,14 +16,22 @@
     const getActivePlayer = opts.getActivePlayer;
     const dist = opts.dist;
     const HEROES = opts.HEROES;
+    const RIVALS = opts.RIVALS || {};
     const actions = opts.actions || {};
     const win = opts.window || (typeof window !== 'undefined' ? window : null);
     const doc = opts.document || (typeof document !== 'undefined' ? document : null);
     const canvas = opts.canvas || (doc ? doc.getElementById('gameCanvas') : null);
     const isMobile = opts.isMobile != null ? !!opts.isMobile : !!(G && G.isMobile);
+    const isRemote = typeof opts.isRemote === 'function' ? opts.isRemote : () => !!opts.isRemote;
 
     function isBlocked() {
       return !G || !G.gameRunning || G.paused;
+    }
+
+    function sendRemote(action) {
+      if (!isRemote()) return false;
+      if (actions.remote) actions.remote(action);
+      return true;
     }
 
     function handleKeyDown(e) {
@@ -31,13 +39,14 @@
       keys[e.code] = true;
       if (e.code === 'Escape' && G.gameRunning) {
         if (e.preventDefault) e.preventDefault();
+        if (sendRemote('pause')) return;
         if (actions.togglePause) actions.togglePause();
         return;
       }
       if (e.code === 'F3') {
         // Debug overlay for the team AI: shows the shape and the ball tracking.
         if (e.preventDefault) e.preventDefault();
-        if (actions.toggleDebugAI) actions.toggleDebugAI();
+        if (!isRemote() && actions.toggleDebugAI) actions.toggleDebugAI();
         return;
       }
       if (isBlocked()) return;
@@ -46,11 +55,13 @@
       if (p.kiyoraSpinTimer > 0) return;
       if (e.code === 'KeyQ') {
         if (e.preventDefault) e.preventDefault();
+        if (sendRemote('switch')) return;
         p.cancelShotCharge();
         if (actions.switchHero) actions.switchHero();
       }
       if (e.code === 'Space') {
         if (e.preventDefault) e.preventDefault();
+        if (sendRemote('pass')) return;
         p.cancelShotCharge();
         if (p.hasBall && p.nagiCharge <= 0) {
           const target = p.findBestPassTarget();
@@ -66,20 +77,24 @@
       }
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         if (e.preventDefault) e.preventDefault();
+        if (!e.repeat && sendRemote('shootStart')) return;
         if (!e.repeat && p.hasBall && p.nagiCharge <= 0) p.startShotCharge();
       }
       if (e.code === 'KeyE') {
         if (e.preventDefault) e.preventDefault();
+        if (sendRemote('ability')) return;
         p.cancelShotCharge();
         if (p.nagiCharge <= 0) p.useAbility();
       }
       if (e.code === 'KeyF') {
         if (e.preventDefault) e.preventDefault();
+        if (sendRemote('tackle')) return;
         p.cancelShotCharge();
         if (!p.hasBall) p.tackle();
       }
       if (e.code === 'KeyR') {
         if (e.preventDefault) e.preventDefault();
+        if (sendRemote('awaken')) return;
         if (p.awakening >= 100 && !p.isAwakened && actions.grantAwakening) {
           actions.grantAwakening(p);
         }
@@ -90,6 +105,10 @@
       if (!G || !keys || !e) return;
       keys[e.code] = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        if (isRemote()) {
+          sendRemote(G.gameRunning && !G.paused ? 'shootRelease' : 'shootCancel');
+          return;
+        }
         const p = getActivePlayer();
         if (p && p.shotCharging) {
           if (G.gameRunning && !G.paused) p.releaseShotCharge();
@@ -194,6 +213,7 @@
 
       function mobilePass() {
         if (isBlocked()) return;
+        if (sendRemote('pass')) return;
         const p = getActivePlayer();
         if (!p || p.kiyoraSpinTimer > 0) return;
         p.cancelShotCharge();
@@ -212,6 +232,7 @@
 
       function mobileShootStart() {
         if (isBlocked()) return;
+        if (sendRemote('shootStart')) return;
         const p = getActivePlayer();
         if (!p || p.kiyoraSpinTimer > 0) return;
         if (p.hasBall && p.nagiCharge <= 0) p.startShotCharge();
@@ -219,10 +240,12 @@
 
       function mobileShootRelease() {
         if (isBlocked()) {
+          if (sendRemote('shootCancel')) return;
           const p = getActivePlayer();
           if (p) p.cancelShotCharge();
           return;
         }
+        if (sendRemote('shootRelease')) return;
         const p = getActivePlayer();
         if (!p) return;
         if (p.shotCharging) p.releaseShotCharge();
@@ -230,6 +253,7 @@
 
       function mobileAbility() {
         if (isBlocked()) return;
+        if (sendRemote('ability')) return;
         const p = getActivePlayer();
         if (!p || p.kiyoraSpinTimer > 0) return;
         p.cancelShotCharge();
@@ -238,6 +262,7 @@
 
       function mobileTackle() {
         if (isBlocked()) return;
+        if (sendRemote('tackle')) return;
         const p = getActivePlayer();
         if (!p || p.kiyoraSpinTimer > 0) return;
         p.cancelShotCharge();
@@ -246,6 +271,7 @@
 
       function mobileAwaken() {
         if (isBlocked()) return;
+        if (sendRemote('awaken')) return;
         const p = getActivePlayer();
         if (!p) return;
         if (p.awakening >= 100 && !p.isAwakened && actions.grantAwakening) {
@@ -263,7 +289,10 @@
       addBtnHandler('btnAbility', mobileAbility);
       addBtnHandler('btnTackle', mobileTackle);
       addBtnHandler('btnAwaken', mobileAwaken);
-      addBtnHandler('btnSwitch', () => { if (actions.switchHero) actions.switchHero(); });
+      addBtnHandler('btnSwitch', () => {
+        if (sendRemote('switch')) return;
+        if (actions.switchHero) actions.switchHero();
+      });
 
       const shootBtn = doc.getElementById('btnShoot');
       if (shootBtn) {
@@ -271,6 +300,7 @@
         registry.on(shootBtn, 'touchend', e => { e.preventDefault(); mobileShootRelease(); }, { passive: false });
         registry.on(shootBtn, 'touchcancel', e => {
           e.preventDefault();
+          if (sendRemote('shootCancel')) return;
           const p = getActivePlayer();
           if (p) p.cancelShotCharge();
         }, { passive: false });
@@ -280,15 +310,17 @@
       if (pauseBtn) {
         registry.on(pauseBtn, 'touchstart', e => {
           e.preventDefault();
-          if (G.gameRunning && actions.togglePause) actions.togglePause();
+          if (!G.gameRunning) return;
+          if (sendRemote('pause')) return;
+          if (actions.togglePause) actions.togglePause();
         }, { passive: false });
       }
 
       const interval = setInterval(() => {
         if (!G.gameRunning) return;
         const p = getActivePlayer();
-        if (!p || !p.heroKey) return;
-        const h = HEROES[p.heroKey];
+        if (!p) return;
+        const h = p.heroKey ? HEROES[p.heroKey] : (p.rivalKey ? RIVALS[p.rivalKey] : null);
         if (!h) return;
         const ability = doc.getElementById('btnAbility');
         if (ability) {

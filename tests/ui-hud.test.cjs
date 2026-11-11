@@ -48,7 +48,8 @@ function createHudFixture() {
     'scoreBlue', 'scoreRed', 'timer', 'abilityNotif', 'posIndicator',
     'ballOwnerTag', 'possessionBar', 'heroPanel', 'hpName', 'hpPassive',
     'hpActive', 'shotChargeWrap', 'btnShoot', 'shotChargeFill',
-    'shotChargePct', 'powerupHud'
+    'shotChargePct', 'powerupHud', 'cdFill', 'awFill', 'awName',
+    'tackleFill', 'tName'
   ]);
   const G = {
     scoreBlue: 3,
@@ -57,19 +58,21 @@ function createHudFixture() {
     stats: { possBlueTime: 30, possRedTime: 30 },
     ball: { x: 100, y: 100, owner: null }
   };
+  let activePlayer = null;
   const hud = createHud({
     G,
     HEROES: { isagi: { name: 'ISAGI', passive: 'P', active: 'A', color: '#00d9ff', activeCooldown: 10 } },
+    RIVALS: { sae: { name: 'SAE', passive: 'Genius Passer', active: 'Genius Flow', color: '#ff8c00', activeCooldown: 5 } },
     FIELD: { w: 1000 },
     POWERUP_TYPES: {},
     clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
-    getActivePlayer: () => null,
+    getActivePlayer: () => activePlayer,
     getMVP: () => null,
     camera: { x: 0, y: 0 },
     document: doc,
     now: () => 1000
   });
-  return { doc, G, hud };
+  return { doc, G, hud, setActivePlayer(player) { activePlayer = player; } };
 }
 
 test('createHud returns the HUD update interface', () => {
@@ -94,6 +97,24 @@ test('score and timer helpers update their DOM elements', () => {
   hud.updateTimerUI();
   assert.equal(doc.elements.timer.textContent, '1:05');
   assert.equal(doc.elements.timer.classList.contains('urgent'), false);
+});
+
+test('hero panel and cooldown support rival heroes for the guest', () => {
+  const { doc, hud, setActivePlayer } = createHudFixture();
+  const rival = {
+    rivalKey: 'sae', heroKey: null, activeCd: 0, awakening: 100,
+    isAwakened: false, tackleCd: 0
+  };
+  setActivePlayer(rival);
+  hud.updateHeroPanel(rival);
+  assert.equal(doc.elements.hpName.textContent, 'SAE');
+  assert.equal(doc.elements.hpPassive.textContent, 'Genius Passer');
+  assert.equal(doc.elements.hpActive.textContent, 'Genius Flow');
+  hud.updateCooldownUI();
+  assert.equal(doc.elements.cdFill.style.width, '100%');
+  assert.equal(doc.elements.awFill.style.width, '100%');
+  assert.equal(doc.elements.awName.textContent, '¡DESPERTAR LISTO!');
+  assert.equal(doc.elements.tName.textContent, 'TACLEADA LISTA');
 });
 
 test('notification and owner tag helpers handle missing owners', () => {
