@@ -60,6 +60,9 @@ class Ball {
     this.state = 'free'; this.owner = null; this.passTarget = null; this.perfectHoming = false; this.uninterceptablePass = false;
     this.lastShooter = null; this.shotPower = 0; this.rotation = 0;
     this.lastPasser = null; this.lastPassTime = 0;
+    // Last player that touched the ball. The AI uses it to know which team
+    // should push up and which one should recover when the ball is loose.
+    this.lastTouch = null; this.lastTouchTeam = null; this.lastTouchTime = 0;
     this.dribbleOffset = {x:0, y:0}; this.dribblePhase = 0;
     this.nagiAwakened = false; this.isagiAwakened = false;
     this.shidouShot = false; this.shidouGuaranteed = false; this.saeGuaranteed = false; this.massDestructionShot = false;
@@ -304,6 +307,7 @@ class Ball {
     if(this.lastPasser && this.lastPasser.team !== player.team){ this.lastPasser = null; this.lastPassTime = 0; }
     const prevOwnerKey = prevTeam ? (prevTeam.heroKey || prevTeam.rivalKey || null) : null; const prevNagiCharging = prevTeam && prevTeam.nagiCharge > 0;
     this.state = 'owned'; this.owner = player; player.hasBall = true; player.receiveImmunity = player.heroKey === 'nagi' ? 0.5 : 0.2; this.vx = 0; this.vy = 0; this.vz = 0; this.spin = 0; this.nagiAwakened = false; this.isagiAwakened = false; this.shidouShot = false; this.shidouGuaranteed = false; this.saeGuaranteed = false; this.massDestructionShot = false; this.perfectHoming = false; this.uninterceptablePass = false; this.rinCurved = false; this.rinFarPostY = 0; if(prevTeam && prevTeam !== player.team){ audio.possession(); }
+    this.lastTouch = player; this.lastTouchTeam = player.team; this.lastTouchTime = performance.now();
   if(player.heroKey === 'isagi' && player.isagiAutoTimer > 0) player.isagiAutoPending = true;
   // KAISER: receiving the ball during Emperor's Route arms an automatic Kaiser Impact.
   if(player.heroKey === 'kaiser' && player.kaiserRouteShotTimer > 0){
@@ -423,6 +427,7 @@ class Ball {
     this.vx = Math.cos(angle) * power; this.vy = Math.sin(angle) * power; this.vz = height;
     this.spin = curve; this.state = 'shot'; this.owner = null; this.lastShooter = shooter; this.shotPower = power; this.perfectHoming = false; this.uninterceptablePass = false; this.planetaryHotline = null;
     shooter.hasBall = false;
+    this.lastTouch = shooter; this.lastTouchTeam = shooter.team; this.lastTouchTime = performance.now();
     spawnParticles(shooter.x, shooter.y, isAbility ? (shooter.heroKey ? HEROES[shooter.heroKey].color : RIVALS[shooter.rivalKey].color) : '#ffaa00', 12);
     G.cameraShake = isAbility ? 8 : 0;
     for(let i=0; i<5; i++){ G.trails.push({x:this.x, y:this.y, z:this.z, life:0.5, maxLife:0.5, color: isAbility ? (shooter.heroKey ? HEROES[shooter.heroKey].color : RIVALS[shooter.rivalKey].color) : '#ffaa00'}); }
@@ -458,6 +463,7 @@ class Ball {
     this.rinCurved = false; this.rinFarPostY = 0; this.nagiAwakened = false; this.isagiAwakened = false;
     this.planetaryHotline = null;
     this.lastPasser = passer; this.lastPassTime = performance.now();
+    this.lastTouch = passer; this.lastTouchTeam = passer.team; this.lastTouchTime = performance.now();
     audio.kick();
     trackPass(passer);
     addCombo(passer.team, 'pass', passer.x, passer.y);
@@ -489,6 +495,8 @@ class Player {
     this.rinChargeDuration = 0.6;
     this.commandRun = 0; 
     this.interceptActive = 0; 
+    this.gkRushTimer = 0;
+    this.aiTarget = null; this.tacticalLane = null;
     this.shieldTimer = 0;
     this.barouZigzag = false;
     this.bachiraCombo = false; this.bachiraComboPhase = 0; this.bachiraComboTimer = 0; this.bachiraBallImmune = 0; this.bachiraVisualX = 0; this.bachiraVisualY = 0;
@@ -590,6 +598,7 @@ class Player {
     if(this.nagiVolleyLock > 0) this.nagiVolleyLock = Math.max(0, this.nagiVolleyLock - dt);
     if(this.commandRun > 0) this.commandRun -= dt;
     if(this.interceptActive > 0) this.interceptActive -= dt;
+    if(this.gkRushTimer > 0) this.gkRushTimer -= dt;
     if(this.shieldTimer > 0) this.shieldTimer -= dt;
     if(this.bachiraBallImmune > 0) this.bachiraBallImmune -= dt;
     if(this.saeBallImmune > 0) this.saeBallImmune -= dt;
@@ -734,8 +743,12 @@ class Player {
     this.y = clamp(this.y, FIELD.y + PLAYER_R, FIELD.y + FIELD.h - PLAYER_R);
 
     if(this.type === 'goalkeeper'){
-      if(this.team === 'blue'){ this.x = clamp(this.x, FIELD.x + 5, FIELD.x + 100); this.y = clamp(this.y, FIELD.y + FIELD.h/2 - GOAL_W/2 - 25, FIELD.y + FIELD.h/2 + GOAL_W/2 + 25); }
-      else { this.x = clamp(this.x, FIELD.x + FIELD.w - 100, FIELD.x + FIELD.w - 5); this.y = clamp(this.y, FIELD.y + FIELD.h/2 - GOAL_W/2 - 25, FIELD.y + FIELD.h/2 + GOAL_W/2 + 25); }
+      // A keeper that is hunting a loose ball can leave his line a little.
+      const rushing = this.gkRushTimer > 0;
+      const maxOut = rushing ? 320 : 100;
+      const halfWidth = rushing ? GOAL_W/2 + 130 : GOAL_W/2 + 25;
+      if(this.team === 'blue'){ this.x = clamp(this.x, FIELD.x + 5, FIELD.x + maxOut); this.y = clamp(this.y, FIELD.y + FIELD.h/2 - halfWidth, FIELD.y + FIELD.h/2 + halfWidth); }
+      else { this.x = clamp(this.x, FIELD.x + FIELD.w - maxOut, FIELD.x + FIELD.w - 5); this.y = clamp(this.y, FIELD.y + FIELD.h/2 - halfWidth, FIELD.y + FIELD.h/2 + halfWidth); }
     }
 
     if(Math.hypot(this.vx, this.vy) > 0.3 && this.nagiCharge <= 0) this.facingAngle = Math.atan2(this.vy, this.vx);

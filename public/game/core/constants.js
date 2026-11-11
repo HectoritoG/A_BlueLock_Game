@@ -75,11 +75,13 @@
   const SHOT_MIN_POWER = 0.35; // A tap still fires at 35% of the normal shot power
 
   // Difficulty multipliers: rivalSpeed, rivalAbility, rivalGKSave, blueGKSave
+  // `tactical` scales how sharp the rival team plays (support runs, pressing
+  // and loose ball tracking) without touching the raw speed values.
   const DIFFICULTY = {
-    easy:      { rivalSpeed:0.85, rivalAbility:0.55, rivalGKSave:-0.15, blueGKSave:0.20, label:'Rivales lentos y porteros débiles. Ideal para practicar.', name:'Fácil' },
-    normal:    { rivalSpeed:1.00, rivalAbility:1.00, rivalGKSave:0.00,  blueGKSave:0.00, label:'Equilibrio equilibrado para un desafío justo.', name:'Normal' },
-    hard:      { rivalSpeed:1.12, rivalAbility:1.40, rivalGKSave:0.12,  blueGKSave:-0.10, label:'Rivales rápidos y agresivos. Portero rival experto.', name:'Difícil' },
-    legendary: { rivalSpeed:1.25, rivalAbility:1.80, rivalGKSave:0.22,  blueGKSave:-0.18, label:'Modo pesadilla. Rivales letales y habilidosos.', name:'Leyenda' }
+    easy:      { rivalSpeed:0.85, rivalAbility:0.55, rivalGKSave:-0.15, blueGKSave:0.20, tactical:0.85, label:'Rivales lentos y porteros débiles. Ideal para practicar.', name:'Fácil' },
+    normal:    { rivalSpeed:1.00, rivalAbility:1.00, rivalGKSave:0.00,  blueGKSave:0.00, tactical:1.00, label:'Equilibrio equilibrado para un desafío justo.', name:'Normal' },
+    hard:      { rivalSpeed:1.12, rivalAbility:1.40, rivalGKSave:0.12,  blueGKSave:-0.10, tactical:1.10, label:'Rivales rápidos y agresivos. Portero rival experto.', name:'Difícil' },
+    legendary: { rivalSpeed:1.25, rivalAbility:1.80, rivalGKSave:0.22,  blueGKSave:-0.18, tactical:1.20, label:'Modo pesadilla. Rivales letales y habilidosos.', name:'Leyenda' }
   };
 
   // === FORMATION CONSTANTS ===
