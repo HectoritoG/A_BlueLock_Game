@@ -250,7 +250,9 @@ class Ball {
         if(p.rivalKey !== 'aiku' || p.stunTimer > 0) continue;
         if(p.interceptActive > 0){
           const d = dist(this, p);
-          if(d < PLAYER_R * p.size + BALL_R + 35){
+          // The wall covers a wide area, and even more when he is awakened.
+          const reach = PLAYER_R * p.size + BALL_R + (p.isAwakened ? 95 : 65);
+          if(d < reach){
             this.vx *= -0.4; this.vy *= 0.3; this.vz = 3;
             this.state = 'free'; this.spin = 0;
             this.shidouShot = false; this.massDestructionShot = false; this.rinCurved = false;
@@ -496,6 +498,8 @@ class Player {
     this.commandRun = 0; 
     this.interceptActive = 0; 
     this.gkRushTimer = 0;
+    this.crowDefenseTimer = 0;
+    this.speedBuff = 1;
     this.aiTarget = null; this.tacticalLane = null;
     this.shieldTimer = 0;
     this.barouZigzag = false;
@@ -628,6 +632,40 @@ class Player {
       if(this.kaiserRouteShotTimer < 0) this.kaiserRouteShotTimer = 0;
     }
 
+    // === CROW DEFENSE (Karasu) ===
+    // A short speed boost plus a steal when he touches the rival carrier.
+    if(this.crowDefenseTimer > 0){
+      this.crowDefenseTimer -= dt;
+      if(this.crowDefenseTimer <= 0){ this.crowDefenseTimer = 0; this.speedBuff = 1; }
+    }
+    if(this.crowDefenseTimer > 0 && !this.hasBall && this.stunTimer <= 0 && this.freezeTimer <= 0){
+      const owner = G.ball.owner;
+      if(owner && owner.team !== this.team && !owner.isControlImmune()){
+        const d = dist(this, owner);
+        if(d < PLAYER_R * (this.size + owner.size) + 18){
+          const blocked = owner.activeTimer > 0 || owner.shieldTimer > 0 || owner.receiveImmunity > 0 ||
+            (owner.nagiCharge > 0 && owner.heroKey === 'nagi') ||
+            (owner.nagiCharge > 0 && owner.heroKey === 'rin' && owner.isAwakened);
+          if(!blocked){
+            owner.hasBall = false;
+            G.ball.beOwnedBy(this);
+            spawnParticles(this.x, this.y, '#b14aed', 22);
+            spawnParticles(owner.x, owner.y, '#ff4fd8', 14);
+            audio.tackle();
+            // Look for a forward to start the counter attack.
+            const forwards = G.players.filter(p => p.team === this.team && p !== this && p.type !== 'goalkeeper' && p.role === 'FWD');
+            let best = null;
+            for(const f of forwards){
+              const adv = this.team === 'red' ? -f.x : f.x;
+              const bestAdv = best ? (this.team === 'red' ? -best.x : best.x) : -Infinity;
+              if(adv > bestAdv) best = f;
+            }
+            if(best) this.doPass(best);
+          }
+        }
+      }
+    }
+
     if(this.nagiCharge > 0){
       // Check if any opponent is trying to steal — trigger fake volley feint
       let feintTriggered = false;
@@ -737,7 +775,7 @@ class Player {
       this.awakening = clamp(this.awakening + dt * gainRate, 0, 100);
     }
 
-    this.x += this.vx * dt * 60; this.y += this.vy * dt * 60;
+    this.x += this.vx * dt * 60 * (this.speedBuff || 1); this.y += this.vy * dt * 60 * (this.speedBuff || 1);
     this.vx *= 0.82; this.vy *= 0.82;
     this.x = clamp(this.x, FIELD.x + PLAYER_R, FIELD.x + FIELD.w - PLAYER_R);
     this.y = clamp(this.y, FIELD.y + PLAYER_R, FIELD.y + FIELD.h - PLAYER_R);
@@ -1004,9 +1042,17 @@ class Player {
     }
 
     if(this.rivalKey === 'aiku' && this.interceptActive > 0 && G.ball.state === 'shot' && G.ball.z < 25){
-      const ballGoalX = this.team === 'red' ? FIELD.x : FIELD.x + FIELD.w;
-      if((this.team === 'red' && G.ball.vx < -1) || (this.team === 'blue' && G.ball.vx > 1)){
-        moveToward(this, G.ball.x, G.ball.y, 2.0);
+      const goingToOurGoal = (this.team === 'red' && G.ball.vx < -1) || (this.team === 'blue' && G.ball.vx > 1);
+      if(goingToOurGoal){
+        // He moves to the point of the trajectory that is closest to him:
+        // that is where the wall stops the ball.
+        const len = Math.hypot(G.ball.vx, G.ball.vy);
+        if(len > 0.5){
+          const nx = G.ball.vx / len, ny = G.ball.vy / len;
+          const rx = this.x - G.ball.x, ry = this.y - G.ball.y;
+          const along = Math.max(0, rx * nx + ry * ny);
+          moveToward(this, G.ball.x + nx * along, G.ball.y + ny * along, 2.0);
+        }
       }
     }
   }
@@ -1520,9 +1566,10 @@ class Player {
       showAbilityNotif(this.isAwakened ? 'POWER DASH!' : 'POWER DASH!', this.isAwakened ? '#ff00ff' : '#ff8c00');
       audio.ability();
     }
-    else if(this.rivalKey === 'karasu' || this.rivalKey === 'reo'){ 
+    else if(this.rivalKey === 'karasu' || this.rivalKey === 'reo'){
       this.dashTimer = config.activeDuration;
-      // Karasu: enhanced zone control — stun + slow nearby enemies
+      // Karasu: CROW DEFENSE — a big speed boost for a few seconds plus a
+      // steal on contact with the rival ball carrier.
       if(this.rivalKey === 'karasu'){
         const crowLife = this.isAwakened ? 1.8 : 1.5;
         G.karasuCrow = {
@@ -1533,24 +1580,13 @@ class Player {
           maxLife: crowLife,
           team: this.team
         };
+        this.crowDefenseTimer = this.isAwakened ? 5.0 : 3.5;
+        this.speedBuff = this.isAwakened ? 1.8 : 1.6;
         G.cameraShake = Math.max(G.cameraShake || 0, this.isAwakened ? 12 : 8);
         spawnParticles(this.x, this.y, '#b14aed', 26);
         spawnParticles(this.x, this.y, '#ff4fd8', 18);
         spawnParticles(this.x, this.y, '#00e5ff', 10);
-        for(const p of G.players){
-          if(p.team === this.team) continue;
-          if(p.isControlImmune()) continue;
-          const d = dist(this, p);
-          if(d < 150){
-            const ang = angleTo(this, p);
-            p.vx += Math.cos(ang) * 6;
-            p.vy += Math.sin(ang) * 6;
-            p.stunTimer = Math.max(p.stunTimer, this.isAwakened ? 1.2 : 0.6);
-            p.slowTimer = Math.max(p.slowTimer, 2.5);
-            spawnParticles(p.x, p.y, '#b14aed', 5);
-          }
-        }
-        showAbilityNotif('⚡ ZONE CONTROL ⚡', '#b14aed');
+        showAbilityNotif('⚡ CROW DEFENSE ⚡', '#b14aed');
       }
       // Reo: copycat dash — if near ball carrier, steal the ball
       if(this.rivalKey === 'reo' && !this.hasBall){

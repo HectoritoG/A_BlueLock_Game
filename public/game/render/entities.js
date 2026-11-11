@@ -127,7 +127,7 @@
         ctx.beginPath(); ctx.arc(screenX, screenY, r + 10, 0, Math.PI * 2); ctx.stroke();
       }
     
-      if(player.isHuman){
+      if(player.isHuman || player.isRemoteHuman){
         ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 10;
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(screenX, screenY, r + 15, 0, Math.PI * 2); ctx.stroke();

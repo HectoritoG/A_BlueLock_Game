@@ -25,8 +25,8 @@
   const RIVALS = {
     sae: { name:'SAE', passive:'Genius Passer', active:'Genius Flow', awakenName:'Divine Destruction', color:'#ff8c00', num:'06', speed:4.4, ballControl:1.8, passPower:3.4, passAccuracy:3.6, shotPower:2.8, shotAccuracy:3.0, size:1.05, dribbleStyle:'precise', activeDuration:3.0, activeCooldown:5.0, awakenDuration:10.0 },
     shidou: { name:'SHIDOU', passive:'Wild Striker', active:'Wild King Bicycle Kick', awakenName:'Wild King', color:'#ff2e63', num:'99', speed:4.5, ballControl:1.2, passPower:1.8, passAccuracy:1.8, shotPower:3.2, shotAccuracy:2.4, size:1.05, dribbleStyle:'wild', activeDuration:2.0, activeCooldown:3.5, awakenDuration:10.0 },
-    aiku: { name:'AIKU', passive:'Iron Wall', active:'Iron Wall Intercept', awakenName:'Absolute Iron Wall', color:'#00ff88', num:'04', speed:3.7, ballControl:1.3, passPower:2.0, passAccuracy:2.0, shotPower:1.8, shotAccuracy:2.0, size:1.15, dribbleStyle:'defensive', activeDuration:2.0, activeCooldown:4.5, awakenDuration:8.0 },
-    karasu: { name:'KARASU', passive:'Tactician', active:'Zone Control', awakenName:'Absolute Zone', color:'#b14aed', num:'03', speed:3.8, ballControl:1.4, passPower:2.4, passAccuracy:2.6, shotPower:2.0, shotAccuracy:2.2, size:1.0, dribbleStyle:'tactical', activeDuration:3.0, activeCooldown:8.0, awakenDuration:8.0 },
+    aiku: { name:'AIKU', passive:'Iron Wall', active:'Iron Wall Intercept', awakenName:'Absolute Iron Wall', color:'#00ff88', num:'04', speed:3.7, ballControl:1.3, passPower:2.0, passAccuracy:2.0, shotPower:1.8, shotAccuracy:2.0, size:1.15, dribbleStyle:'defensive', activeDuration:2.0, activeCooldown:2.0, awakenDuration:8.0 },
+    karasu: { name:'KARASU', passive:'Tactician', active:'Crow Defense', awakenName:'Absolute Crow', color:'#b14aed', num:'03', speed:3.8, ballControl:1.4, passPower:2.4, passAccuracy:2.6, shotPower:2.0, shotAccuracy:2.2, size:1.0, dribbleStyle:'tactical', activeDuration:3.0, activeCooldown:7.0, awakenDuration:8.0 },
     otoya: { name:'OTOYA', passive:'Ninja Step', active:'Shadow Step', awakenName:'Shadow Ninja', color:'#ff69b4', num:'09', speed:4.5, ballControl:1.5, passPower:2.0, passAccuracy:2.0, shotPower:2.2, shotAccuracy:2.2, size:0.95, dribbleStyle:'ninja', activeDuration:2.5, activeCooldown:8.0, awakenDuration:8.0 },
     reo: { name:'REO', passive:'Chameleon', active:'Copycat', awakenName:'Perfect Copy', color:'#b14aed', num:'07', speed:4.0, ballControl:1.5, passPower:2.4, passAccuracy:2.4, shotPower:2.6, shotAccuracy:2.4, size:1.0, dribbleStyle:'precise', activeDuration:2.0, activeCooldown:8.0, awakenDuration:8.0 },
     kunigami: { name:'KUNIGAMI', passive:'Power Forward', active:'Power Dash', awakenName:'Hero Shot', color:'#ff8c00', num:'22', speed:3.8, ballControl:1.2, passPower:2.0, passAccuracy:2.0, shotPower:3.4, shotAccuracy:2.6, size:1.1, dribbleStyle:'aggressive', activeDuration:1.5, activeCooldown:3.5, awakenDuration:8.0 },
@@ -46,6 +46,13 @@
   };
 
   const RIVAL_GK_NAMES = ['IBARAKI','DARAI','NIKA','HAO','WAKABAYASHI'];
+
+  // Some rivals do not play the role of the slot they are placed in: Karasu
+  // is a defensive midfielder even when the formation puts him next to the
+  // centre backs.
+  const RIVAL_ROLE_OVERRIDES = {
+    karasu: 'MID'
+  };
   const MATCHES = {
     japan: {
       id:'japan', name:'SELECCIÓN JAPÓN',
@@ -69,6 +76,17 @@
   // === TAMAÑOS AJUSTADOS (LIGERAMENTE MÁS GRANDES QUE EL ORIGINAL) ===
   const FIELD = { x:0, y:0, w:4200, h:800 };
   const GOAL_W = 280, GOAL_DEPTH = 40, PLAYER_R = 18, BALL_R = 14, MATCH_TIME = 180;
+  // Pitch markings. Every size is derived from the goal width so the goal area
+  // always contains the goal and the whole pitch stays proportional to the
+  // 4200x800 field:
+  //   AREA       penalty area -> 560 deep x 600 wide
+  //   SMALL_AREA goal area (area chica) -> 200 deep x 420 wide
+  const AREA = { w:GOAL_W * 2.0, h:GOAL_W * 2.14 };
+  const SMALL_AREA = { w:GOAL_W * 0.71, h:GOAL_W * 1.5 };
+  const PENALTY_SPOT = GOAL_W * 1.29;    // 360 from the goal line
+  const PENALTY_ARC_R = GOAL_W * 1.07;   // 300, the "D" in front of the penalty area
+  const CENTER_CIRCLE_R = GOAL_W * 0.57; // 160
+  const CORNER_ARC_R = GOAL_W * 0.21;    // 60
   const AWAKEN_CHARGE_EXTRA_TIME = 1.0; // A full awaken charge takes 1 extra second
   const SHOT_CHARGE_TIME = 0.6; // Seconds to fully charge a normal shot
   const SAE_OFF_BALANCE_RANGE = 270; // Max distance for Sae to target the ball carrier with Off Balance
@@ -118,9 +136,16 @@
     HEROES,
     RIVALS,
     RIVAL_GK_NAMES,
+    RIVAL_ROLE_OVERRIDES,
     MATCHES,
     MATCH_ORDER,
     FIELD,
+    AREA,
+    SMALL_AREA,
+    PENALTY_SPOT,
+    PENALTY_ARC_R,
+    CENTER_CIRCLE_R,
+    CORNER_ARC_R,
     GOAL_W,
     GOAL_DEPTH,
     PLAYER_R,

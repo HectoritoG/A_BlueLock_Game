@@ -16,6 +16,8 @@
       phase: 'loose',
       looseTimer: 0,
       transitionTimer: 0,
+      counterPressTime: 1.8,
+      counterPressPlayers: 2,
       carrier: null,
       lastTouchTeam: null,
       human: null,

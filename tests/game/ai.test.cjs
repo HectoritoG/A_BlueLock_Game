@@ -189,6 +189,51 @@ test('central defenders mark the most dangerous rival and stay goal side', () =>
   assert.equal(target.kind, 'mark');
   assert.ok(target.x > striker.x, 'the defender has to stay between the rival and his goal');
   assert.ok(target.x < FIELD.x + FIELD.w, 'the defender stays inside the pitch');
+  // The mark is tight: he does not fall back next to his own keeper.
+  assert.ok(target.x - striker.x < 300, `the mark is too deep: ${target.x - striker.x}`);
+});
+
+test('a central defender holds a line well outside the goal area', () => {
+  const aiku = makePlayer(3000, 400, 'DEF', 'red', FIELD.y + FIELD.h * 0.15, 'aiku');
+  aiku.tacticalLane = BLAI.playerLane(aiku, FIELD);
+  const ctx = makeContext({
+    attackDir: -1,
+    ball: { x: 1200, y: 400, vx: 0, vy: 0, z: 0, state: 'free' },
+    ownGoalX: FIELD.x + FIELD.w,
+    opponents: []
+  });
+  const target = BLAI.defensiveTarget(aiku, ctx, FIELD);
+
+  assert.equal(target.kind, 'line');
+  const depth = Math.abs(target.x - (FIELD.x + FIELD.w));
+  assert.ok(depth >= BLAI.TACTICS.centralDefenderZoneMin - 1, `he must not drop inside his zone: ${depth}`);
+});
+
+test('the goal area is wide enough for the defence to work', () => {
+  assert.ok(constants.SMALL_AREA.w >= 150, 'the small area has to be expanded');
+  assert.ok(constants.AREA.w > constants.SMALL_AREA.w, 'the penalty area must be bigger than the goal area');
+});
+
+test('a shot that goes near the defender is detected', () => {
+  const aiku = makePlayer(3600, 400, 'DEF', 'red', FIELD.y + FIELD.h * 0.15, 'aiku');
+  // The shot travels towards the red goal, right in front of Aiku.
+  const shot = { x: 3000, y: 380, vx: 10, vy: 0.5, z: 0, state: 'shot' };
+
+  assert.equal(BLAI.shotPassesNear(aiku, shot), true, 'the shot goes straight past him');
+});
+
+test('a shot that misses the defender is not detected', () => {
+  const aiku = makePlayer(3600, 700, 'DEF', 'red', FIELD.y + FIELD.h * 0.15, 'aiku');
+  const shot = { x: 3000, y: 100, vx: 10, vy: 0.5, z: 0, state: 'shot' };
+
+  assert.equal(BLAI.shotPassesNear(aiku, shot), false, 'the shot goes far away from him');
+});
+
+test('a shot moving away from the defender is not detected', () => {
+  const aiku = makePlayer(3000, 400, 'DEF', 'red', FIELD.y + FIELD.h * 0.15, 'aiku');
+  const shot = { x: 3600, y: 400, vx: 10, vy: 0, z: 0, state: 'shot' };
+
+  assert.equal(BLAI.shotPassesNear(aiku, shot), false, 'the ball is already past him');
 });
 
 test('a central defender always defends the middle even from a wide slot', () => {
@@ -230,4 +275,40 @@ test('two central defenders do not mark the same rival', () => {
   const a = targets.get(aiku);
   const k = targets.get(karasu);
   assert.notEqual(a.x, k.x, 'each central defender picks a different rival');
+});
+
+test('Karasu plays as a defensive midfielder that holds the middle', () => {
+  assert.equal(constants.RIVAL_ROLE_OVERRIDES.karasu, 'MID');
+  assert.equal(BLAI.profileOf(makePlayer(0, 0, 'MID', 'red', 0, 'karasu')), 'presser');
+
+  const karasu = makePlayer(2100, 400, 'MID', 'red', FIELD.y + FIELD.h * 0.5, 'karasu');
+  karasu.tacticalLane = BLAI.playerLane(karasu, FIELD);
+  const ctx = makeContext({ ball: { x: 3000, y: 400, vx: 0, vy: 0, z: 0, state: 'free' } });
+  const target = BLAI.supportTarget(karasu, ctx, FIELD);
+
+  assert.equal(target.kind, 'holding');
+  assert.ok(target.x < 3000, 'the holding midfielder stays behind the ball');
+  assert.ok(Math.abs(target.y - (FIELD.y + FIELD.h / 2)) < 220, 'he stays in the central channel');
+});
+
+test('Shidou and Barou keep a high line instead of dropping', () => {
+  const shidou = makePlayer(1500, 600, 'FWD', 'red', FIELD.y + FIELD.h * 0.675, 'shidou');
+  shidou.tacticalLane = BLAI.playerLane(shidou, FIELD);
+  const ctx = makeContext({
+    attackDir: -1,
+    ball: { x: 3600, y: 400, vx: 0, vy: 0, z: 0, state: 'free' },
+    ownGoalX: FIELD.x + FIELD.w
+  });
+  const target = BLAI.defensiveTarget(shidou, ctx, FIELD);
+
+  assert.equal(target.kind, 'high');
+  assert.ok(target.x <= FIELD.x + FIELD.w / 2 - 250, `the striker must not drop deep, got ${target.x}`);
+});
+
+test('Aiku can use his ability much more often', () => {
+  assert.ok(constants.RIVALS.aiku.activeCooldown <= 2.5, 'the wall has to be available almost always');
+});
+
+test('Karasu ability is called Crow Defense', () => {
+  assert.equal(constants.RIVALS.karasu.active, 'Crow Defense');
 });

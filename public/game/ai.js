@@ -20,16 +20,21 @@
 
   // Tactical profiles. The formation slot is not enough to describe these
   // characters: Aiku and Karasu are central defenders no matter where the
-  // formation puts them, and Reo is a hybrid that steps out of his line.
+  // formation puts them, Reo is a hybrid that steps out of his line and
+  // Shidou and Barou keep a high line waiting for the counter attack.
   const PROFILES = {
     aiku: 'centralDefender',
-    karasu: 'centralDefender',
-    reo: 'hybrid'
+    karasu: 'presser',
+    reo: 'hybrid',
+    shidou: 'striker',
+    barou: 'striker'
   };
 
   const PROFILE_CENTRAL_DEFENDER = 'centralDefender';
   const PROFILE_HYBRID = 'hybrid';
   const PROFILE_HOLDER = 'holder';
+  const PROFILE_STRIKER = 'striker';
+  const PROFILE_PRESSER = 'presser';
 
   // Tunables for the tactical layer. Everything the AI does is driven from
   // here so the behaviour can be rebalanced without touching the logic.
@@ -48,11 +53,11 @@
     restDefenseDepth: 330,       // central defenders stay this far behind the ball
     restDefenseMinDepth: 250,    // ...but never closer than this to their goal
     restDefenseMinGap: 120,      // ...and never closer than this to the ball
-    wingerOverlapDepth: 230,     // wide midfielders pushing ahead of the carrier
-    wingerUnderlapDepth: 40,     // ...or tucking in when the carrier is crowded
-    fullbackOverlapDepth: 170,   // wide defenders overlapping
-    fullbackSupportDepth: 10,    // ...or staying level when the carrier is crowded
-    strikerDepth: 380,           // forwards running beyond the carrier
+    wingerOverlapDepth: 120,     // wide midfielders pushing ahead of the carrier
+    wingerUnderlapDepth: 30,     // ...or tucking in when the carrier is crowded
+    fullbackOverlapDepth: 170,   // wide defenders overlapping in the final third
+    fullbackSupportDepth: 40,    // ...otherwise they stay level with the carrier
+    strikerDepth: 300,           // forwards running beyond the carrier
     strikerBoxDepth: 180,        // distance from the goal line inside the box
     touchlineInset: 70,          // how close the wide players hug the sideline
     minSpacing: 140,             // minimum distance between two support targets
@@ -69,10 +74,16 @@
     goalSideGap: 70,             // how far behind the ball a recovering player stays
     pressSpeed: 1.15,            // speed factor when pressing the carrier
     defensiveLineDepth: 300,     // depth of the defensive line behind the ball
-    defensiveLineMinDepth: 220,  // ...but never deeper than this from own goal
+    defensiveLineMinDepth: 260,  // ...but never deeper than this from own goal
     anchorDepth: 380,            // hold-the-line characters sit this deep
-    markMaxDistance: 900,        // a rival further away than this is not marked
-    markGoalSide: 0.25,          // how close to our goal the mark is taken
+    markMaxDistance: 1150,       // a rival further away than this is not marked
+    markGoalSide: 0.15,          // how close to our goal the mark is taken
+    markMaxDepth: 520,           // the mark never goes deeper than this
+    centralDefenderZone: 950,    // depth of the zone the centre backs defend
+    centralDefenderZoneMin: 280, // they never drop closer than this to the goal
+    shotDetectRange: 300,        // how close a shot has to pass to raise the wall
+    strikerHighLine: 250,        // how far ahead of the centre the strikers stay
+    holdingMidDepth: 160,        // depth of the holding midfielder behind the ball
 
     // --- loose balls -------------------------------------------------------
     chaseSpeed: 1.3,             // speed factor of the designated chaser
@@ -282,6 +293,12 @@
         y = lane.side === 'center' ? (by > goalY ? by - 150 : by + 150) : laneY(lane, field);
         kind = 'run';
       }
+    } else if(profile === PROFILE_PRESSER){
+      // Holding midfielder: he stays in the central channel behind the ball
+      // and hunts the rival carrier from there.
+      x = bx - dir * TACTICS.holdingMidDepth;
+      y = clamp(by, goalY - 220, goalY + 220);
+      kind = 'holding';
     } else if(player.role === 'MID' || profile === PROFILE_HYBRID){
       // A hybrid defender plays like a midfielder: he offers passing options
       // and steps out of his line when the team has the ball.
@@ -296,9 +313,16 @@
       }
     } else {
       if(lane.isWide){
-        x = bx + dir * (crowded ? TACTICS.fullbackSupportDepth : TACTICS.fullbackOverlapDepth);
+        if(finalThird){
+          // In the last third the fullback overlaps to attack the box.
+          x = bx + dir * TACTICS.fullbackOverlapDepth;
+          kind = crowded ? 'support' : 'overlap';
+        } else {
+          // Otherwise he stays level with the carrier, wide, to give options.
+          x = bx - dir * TACTICS.fullbackSupportDepth;
+          kind = 'support';
+        }
         y = laneY(lane, field);
-        kind = crowded ? 'support' : 'overlap';
       } else {
         x = clamp(
           bx - dir * TACTICS.restDefenseDepth,
@@ -407,10 +431,25 @@
     return targets;
   }
 
+  // Does the shot that is travelling now go near this player? It lets the
+  // defenders raise the wall before the ball arrives.
+  function shotPassesNear(player, ball, range){
+    const vx = ball.vx || 0, vy = ball.vy || 0;
+    const len = Math.hypot(vx, vy);
+    if(len < 0.5) return false;
+    const nx = vx / len, ny = vy / len;
+    const rx = player.x - ball.x, ry = player.y - ball.y;
+    const along = rx * nx + ry * ny;
+    if(along < 0) return false;          // the ball is moving away from him
+    const perp = Math.abs(rx * (-ny) + ry * nx);
+    return perp <= (range == null ? TACTICS.shotDetectRange : range);
+  }
+
   // --- defensive shape -----------------------------------------------------
 
   // Picks the rival that is the biggest threat for our goal and returns the
-  // spot a central defender has to occupy: between that rival and our goal.
+  // spot a central defender has to occupy: close to that rival, but always on
+  // the goal side of him.
   function markTarget(player, ctx, field, used){
     const ownGoalX = ctx.ownGoalX;
     const goalY = ctx.goalY || goalYOf(field);
@@ -428,8 +467,12 @@
     // A rival that is far away is not worth marking.
     if(best > TACTICS.markMaxDistance) return null;
     if(used) used.add(mark);
-    const x = ownGoalX + (mark.x - ownGoalX) * TACTICS.markGoalSide;
-    const y = mark.y + (goalY - mark.y) * TACTICS.markGoalSide;
+    const dir = ctx.attackDir;
+    // He stays tight on his rival, only a little bit on the goal side, and he
+    // never goes deeper than his zone.
+    const goalSide = Math.min(TACTICS.markGoalSide * best, TACTICS.markMaxDepth);
+    const x = mark.x - dir * goalSide;
+    const y = mark.y + (goalY - mark.y) * 0.2;
     return { x: x, y: y, kind: 'mark', opponent: mark };
   }
 
@@ -443,23 +486,39 @@
     const lane = player.tacticalLane || playerLane(player, field);
     const profile = profileOf(player);
     const aheadness = (player.x - bx) * dir;
+    // Depth of the ball measured from our own goal, in the attacking
+    // direction. It keeps the maths readable for both teams.
+    const ballDepth = (bx - ownGoalX) * dir;
     let x, y, kind;
+
+    // Depth of a defender that holds the line: never closer than the edge of
+    // the zone and never further than the ball.
+    function lineDepth(minDepth){
+      let depth = ballDepth - TACTICS.defensiveLineDepth;
+      if(depth > ballDepth - 80) depth = ballDepth - 80;
+      if(depth < minDepth) depth = minDepth;
+      return depth;
+    }
 
     if(profile === PROFILE_CENTRAL_DEFENDER){
       // Central defenders hold the middle and pick up the most dangerous
-      // rival instead of chasing the ball around the pitch.
+      // rival instead of chasing the ball around the pitch. They defend a
+      // wide zone that goes well past the goal area.
       const mark = markTarget(player, ctx, field, used);
       if(mark){
         x = mark.x; y = mark.y; kind = 'mark';
       } else {
-        x = clamp(
-          bx - dir * TACTICS.defensiveLineDepth,
-          ownGoalX + dir * TACTICS.defensiveLineMinDepth,
-          bx - dir * 80
-        );
+        x = ownGoalX + dir * lineDepth(TACTICS.centralDefenderZoneMin);
         y = clamp(by, goalY - 200, goalY + 200);
         kind = 'line';
       }
+    } else if(profile === PROFILE_STRIKER){
+      // Pure strikers keep a high line: they barely drop and wait for the
+      // counter attack instead of defending deep.
+      const highLine = (field.x + field.w / 2) + dir * TACTICS.strikerHighLine;
+      x = dir > 0 ? Math.max(bx - dir * 60, highLine) : Math.min(bx - dir * 60, highLine);
+      y = goalY + (laneY(lane, field) - goalY) * 0.5;
+      kind = 'high';
     } else if(aheadness > 40){
       // The player pushed too far up: come back to the goal side of the ball.
       x = bx - dir * TACTICS.goalSideGap;
@@ -470,12 +529,13 @@
       x = bx - dir * 150;
       y = lane.isWide ? laneY(lane, field) : (by > goalY ? by - 140 : by + 140);
       kind = 'press';
+    } else if(profile === PROFILE_PRESSER){
+      // The pressing midfielder hunts the carrier from the middle.
+      x = bx - dir * 160;
+      y = lane.isWide ? laneY(lane, field) : clamp(by, goalY - 220, goalY + 220);
+      kind = 'press';
     } else if(player.role === 'DEF' && !lane.isWide){
-      x = clamp(
-        bx - dir * TACTICS.defensiveLineDepth,
-        ownGoalX + dir * TACTICS.defensiveLineMinDepth,
-        bx - dir * 80
-      );
+      x = ownGoalX + dir * lineDepth(TACTICS.defensiveLineMinDepth);
       y = clamp(by, field.y + 120, field.y + field.h - 120);
       kind = 'line';
     } else if(player.role === 'DEF'){
@@ -538,9 +598,11 @@
     playerLane: playerLane,
     laneY: laneY,
     holdsLine: holdsLine,
+    behindBall: behindBall,
     predictBallPath: predictBallPath,
     estimateMaxSpeed: estimateMaxSpeed,
     reachablePoint: reachablePoint,
+    shotPassesNear: shotPassesNear,
     chooseLooseBallRoles: chooseLooseBallRoles,
     supportTarget: supportTarget,
     assignSupportTargets: assignSupportTargets,

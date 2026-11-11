@@ -168,9 +168,11 @@
 
   /* === PAUSE MENU === */
   /* === FORMATION EDITOR === */
-  .formation-entry{display:flex;justify-content:center;margin:4px 0 2px;z-index:2;}
+  .formation-entry{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:4px 0 2px;z-index:2;}
   .formation-btn{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;padding:8px 22px;border:2px solid var(--green);color:var(--green);background:rgba(0,0,0,.45);border-radius:5px;cursor:pointer;text-transform:uppercase;transition:all .2s;}
   .formation-btn:hover{background:var(--green);color:#000;box-shadow:0 0 18px var(--green);}
+  .formation-btn.multiplayer-btn{border-color:var(--blue);color:var(--blue);}
+  .formation-btn.multiplayer-btn:hover{background:var(--blue);color:#000;box-shadow:0 0 18px var(--blue);}
   #formationModal{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.88);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px;}
   #formationModal.show{display:flex;}
   .formation-modal{width:min(96vw,760px);max-height:92vh;overflow:auto;background:linear-gradient(160deg,rgba(8,28,42,.98),rgba(3,10,18,.99));border:2px solid rgba(0,255,136,.35);border-radius:12px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.7);}
@@ -193,6 +195,44 @@
   .formation-action.secondary{border-color:#89a;color:#89a;}
   .formation-action.secondary:hover{background:#89a;color:#000;box-shadow:0 0 16px #89a;}
   .formation-status{min-height:16px;text-align:center;font-size:11px;color:#8f8;letter-spacing:1px;margin-top:6px;}
+
+  /* === PRIVATE 1v1 ROOM LOBBY === */
+  .hidden{display:none!important;}
+  #roomModal{position:fixed;inset:0;z-index:160;background:rgba(0,0,0,.9);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px;}
+  #roomModal.show{display:flex;}
+  .room-modal{width:min(96vw,720px);max-height:92vh;overflow:auto;background:linear-gradient(160deg,rgba(8,28,42,.98),rgba(3,10,18,.99));border:2px solid rgba(0,217,255,.35);border-radius:12px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);}
+  .room-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .room-title{font-family:'Orbitron',sans-serif;font-weight:900;font-size:18px;letter-spacing:4px;color:var(--blue);text-shadow:0 0 18px rgba(0,217,255,.45);}
+  .room-close{width:34px;height:34px;border-radius:6px;border:1px solid rgba(0,217,255,.4);background:rgba(0,0,0,.5);color:var(--blue);font-size:18px;cursor:pointer;}
+  .room-close:hover{background:rgba(0,217,255,.18);}
+  .room-tabs{display:flex;gap:8px;margin:12px 0 14px;flex-wrap:wrap;}
+  .room-tab{flex:1 1 140px;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;padding:9px 12px;border:1px solid rgba(0,217,255,.35);border-radius:5px;background:rgba(0,0,0,.45);color:#8aa;cursor:pointer;text-transform:uppercase;transition:all .2s;}
+  .room-tab:hover{border-color:var(--blue);color:var(--blue);}
+  .room-tab.active{background:rgba(0,217,255,.16);border-color:var(--blue);color:var(--blue);box-shadow:0 0 14px rgba(0,217,255,.25);}
+  .room-panel{display:flex;flex-direction:column;gap:10px;}
+  .room-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .room-row .room-field{flex:1 1 180px;}
+  .room-field{display:flex;flex-direction:column;gap:4px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:#8aa;text-transform:uppercase;}
+  .room-field input,.room-field select{font-family:'Orbitron',sans-serif;font-size:12px;padding:8px 10px;border:1px solid rgba(0,217,255,.35);border-radius:5px;background:rgba(0,0,0,.65);color:#dff;outline:none;}
+  .room-field input:focus,.room-field select:focus{border-color:var(--blue);box-shadow:0 0 12px rgba(0,217,255,.25);}
+  .room-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
+  .room-btn{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;padding:9px 20px;border:2px solid var(--blue);color:var(--blue);background:transparent;border-radius:4px;cursor:pointer;text-transform:uppercase;transition:all .2s;}
+  .room-btn:hover{background:var(--blue);color:#000;box-shadow:0 0 16px var(--blue);}
+  .room-btn.secondary{border-color:#89a;color:#89a;}
+  .room-btn.secondary:hover{background:#89a;color:#000;box-shadow:0 0 16px #89a;}
+  .room-btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+  .room-code-box{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:10px;border:1px dashed rgba(0,217,255,.45);border-radius:8px;background:rgba(0,217,255,.06);}
+  .room-code-value{font-family:'Orbitron',sans-serif;font-size:clamp(24px,5vw,34px);font-weight:900;letter-spacing:8px;color:var(--blue);text-shadow:0 0 18px rgba(0,217,255,.5);}
+  .room-players{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:6px;background:rgba(0,0,0,.3);font-size:11px;color:#89a;letter-spacing:1px;}
+  .room-player{display:flex;align-items:center;gap:8px;}
+  .room-player::before{content:'●';color:#567;}
+  .room-player.connected{color:#9fe;}
+  .room-player.connected::before{color:var(--green);text-shadow:0 0 8px var(--green);}
+  .room-status{min-height:18px;text-align:center;font-size:11px;letter-spacing:1px;color:#8aa;line-height:1.4;}
+  .room-status[data-tone="ok"]{color:#0f8;}
+  .room-status[data-tone="warn"]{color:#ffb347;}
+  .room-status[data-tone="error"]{color:#ff5a5a;}
+  .room-hint{font-size:10px;color:#678;text-align:center;line-height:1.5;letter-spacing:.5px;}
 
   #pauseScreen{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
   #pauseScreen.show{display:flex;animation:pauseFade .25s ease-out;}
@@ -498,6 +538,7 @@
     </div>
   </div>
   <div class="formation-entry">
+    <button id="multiplayerBtn" class="formation-btn multiplayer-btn">Sala 1v1</button>
     <button id="formationBtn" class="formation-btn">Editar formación</button>
   </div>
   </div>
@@ -528,6 +569,78 @@
       <button id="formationCloseBtn" class="formation-action secondary">Cerrar</button>
     </div>
     <div id="formationStatus" class="formation-status"></div>
+  </div>
+</div>
+
+<div id="roomModal">
+  <div class="room-modal">
+    <div class="room-header">
+      <div class="room-title">SALA 1v1</div>
+      <button id="roomCloseBtn" class="room-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="room-tabs">
+      <button id="roomHostTab" class="room-tab active" data-mode="host">Crear sala</button>
+      <button id="roomJoinTab" class="room-tab" data-mode="join">Unirse</button>
+    </div>
+
+    <div id="roomHostPanel" class="room-panel">
+      <div class="room-row">
+        <label class="room-field">Tu nombre
+          <input id="roomHostName" maxlength="16" placeholder="Anfitrión" autocomplete="nickname">
+        </label>
+        <label class="room-field">Tu héroe
+          <select id="roomHostHero"></select>
+        </label>
+      </div>
+      <label class="room-field">Conexión
+        <select id="roomHostTransport">
+          <option value="peer">P2P · amigos en otros equipos</option>
+          <option value="broadcast">Misma PC · prueba en dos pestañas</option>
+        </select>
+      </label>
+      <div class="room-actions">
+        <button id="roomCreateBtn" class="room-btn">Crear sala</button>
+      </div>
+      <div id="roomCodeBox" class="room-code-box hidden">
+        <span id="roomCodeValue" class="room-code-value">------</span>
+        <button id="roomCopyBtn" class="room-btn secondary">Copiar</button>
+      </div>
+      <div id="roomHostPlayers" class="room-players"></div>
+      <div id="roomHostStatus" class="room-status">Crea una sala y comparte el código.</div>
+      <div class="room-actions">
+        <button id="roomStartBtn" class="room-btn" disabled>Iniciar partido</button>
+      </div>
+      <div class="room-hint">El invitado debe usar el mismo modo de conexión. En P2P el código conecta directamente con su navegador.</div>
+    </div>
+
+    <div id="roomJoinPanel" class="room-panel hidden">
+      <div class="room-row">
+        <label class="room-field">Tu nombre
+          <input id="roomJoinName" maxlength="16" placeholder="Invitado" autocomplete="nickname">
+        </label>
+        <label class="room-field">Código de sala
+          <input id="roomJoinCode" maxlength="12" placeholder="ABC123" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <label class="room-field">Tu héroe rival
+        <select id="roomGuestHero"></select>
+      </label>
+      <label class="room-field">Conexión
+        <select id="roomJoinTransport">
+          <option value="peer">P2P · amigos en otros equipos</option>
+          <option value="broadcast">Misma PC · prueba en dos pestañas</option>
+        </select>
+      </label>
+      <div class="room-actions">
+        <button id="roomJoinBtn" class="room-btn">Unirse</button>
+      </div>
+      <div id="roomJoinPlayers" class="room-players"></div>
+      <div id="roomJoinStatus" class="room-status">Escribe el código que te dio el anfitrión.</div>
+      <div class="room-actions">
+        <button id="roomReadyBtn" class="room-btn" disabled>Listo</button>
+      </div>
+      <div class="room-hint">El anfitrión controla el partido. Tú controlas un héroe rival y tus acciones viajan por P2P.</div>
+    </div>
   </div>
 </div>
 
@@ -670,11 +783,18 @@
 <script src="./game/session/local-session.js"></script>
 <script src="./game/ui/hud.js"></script>
 <script src="./game/input/input.js"></script>
+<script src="./game/vendor/peerjs.min.js"></script>
+<script src="./game/net/protocol.js"></script>
+<script src="./game/net/transport.js"></script>
+<script src="./game/net/room.js"></script>
+<script src="./game/net/snapshot.js"></script>
+<script src="./game/ui/lobby.js"></script>
 <script>
 // === SHARED CORE (classic bridge until main.js is modularized) ===
 const {
-  HEROES, RIVALS, RIVAL_GK_NAMES, MATCHES, MATCH_ORDER,
-  FIELD, GOAL_W, GOAL_DEPTH, PLAYER_R, BALL_R, MATCH_TIME,
+  HEROES, RIVALS, RIVAL_GK_NAMES, RIVAL_ROLE_OVERRIDES, MATCHES, MATCH_ORDER,
+  FIELD, AREA, SMALL_AREA, PENALTY_SPOT, PENALTY_ARC_R, CENTER_CIRCLE_R, CORNER_ARC_R,
+  GOAL_W, GOAL_DEPTH, PLAYER_R, BALL_R, MATCH_TIME,
   AWAKEN_CHARGE_EXTRA_TIME, SHOT_CHARGE_TIME, SAE_OFF_BALANCE_RANGE,
   SHOT_MIN_POWER, DIFFICULTY, BLUE_ROLES, FORMATION_STORAGE_PREFIX,
   FORMATION_DEFAULT_SLOTS, POWERUP_TYPES, MAX_PARTICLES
@@ -684,6 +804,10 @@ const { visualRng } = window.BLRng;
 const { createMatchState } = window.BLMatchState;
 const BLAI = window.BLAI;
 const TACTICS = BLAI.TACTICS;
+const BLNetTransport = window.BLNetTransport;
+const BLRoom = window.BLRoom;
+const BLSnapshot = window.BLNetSnapshot;
+const BLLobby = window.BLLobby;
 
 // ============================================================
 //  CONFIGURACIÓN DE IMÁGENES DE PERSONAJES
@@ -1365,9 +1489,13 @@ const session = window.BLSession.createLocalSession({
   }
 });
 const G = session.state;
+G.netMode = 'local';
+G.localPlayerId = null;
+G.remoteGuestId = null;
 const hud = window.BLHud.createHud({
   G,
   HEROES,
+  RIVALS,
   FIELD,
   POWERUP_TYPES,
   clamp,
@@ -1385,6 +1513,21 @@ const {
   showPowerupHud, updatePowerupHud, clearPowerupHud
 } = hud;
 const keys = {};
+
+// === PRIVATE 1v1 NETWORK SESSION ===
+let netRoom = null;
+let netRole = null;
+let netMatchReady = false;
+let netInputTimer = 0;
+let netSnapshotTimer = 0;
+let netLatestSnapshot = null;
+let netRemoteInput = { up:false, down:false, left:false, right:false };
+let netRemoteActions = [];
+let netHostLeft = false;
+let lobby = null;
+let rafScheduled = false;
+const NET_INPUT_INTERVAL = 1 / 30;
+const NET_SNAPSHOT_INTERVAL = 1 / 12;
 
 // === FORMATION SYSTEM ===
 const FORMATION_MEMORY = {};
@@ -1803,6 +1946,11 @@ function updateCombos(dt){
 // === PAUSE SYSTEM ===
 function togglePause(){
   if(!G.gameRunning) return;
+  if(G.netMode === 'guest'){
+    if(netHostLeft){ showAbilityNotif('EL ANFITRIÓN SE DESCONECTÓ', '#ff2e63'); return; }
+    if(netRoom) netRoom.sendInput(readGuestInput(), ['pause']);
+    return;
+  }
   const paused = session.togglePause();
   const ps = document.getElementById('pauseScreen');
   if(paused){
@@ -1810,8 +1958,28 @@ function togglePause(){
     ps.classList.add('show'); SFX.ui();
   }
   else { ps.classList.remove('show'); G.lastTime = performance.now(); SFX.ui(); }
+  if(G.netMode === 'host'){
+    // Drop input/actions queued before the pause so the guest does not fire a
+    // stale pass or shot the moment the match resumes.
+    netRemoteActions = [];
+    netRemoteInput = { up:false, down:false, left:false, right:false };
+    const guestPlayer = G.players.find(p => p.id === G.remoteGuestId);
+    if(guestPlayer) guestPlayer.cancelShotCharge();
+    if(netRoom) netRoom.sendPause(paused);
+  }
+}
+function applyNetworkPause(paused){
+  if(G.netMode !== 'guest') return;
+  G.paused = !!paused;
+  const p = getActivePlayer(); if(p) p.cancelShotCharge();
+  const ps = document.getElementById('pauseScreen');
+  if(!ps) return;
+  if(G.paused){ ps.classList.add('show'); }
+  else { ps.classList.remove('show'); G.lastTime = performance.now(); }
 }
 function quitToMenu(){
+  if(netRoom){ try { netRoom.close(); } catch(e) {} netRoom = null; }
+  if(lobby){ try { lobby.destroy(); } catch(e) {} }
   session.end();
   document.getElementById('pauseScreen').classList.remove('show');
   document.getElementById('mobileControls').classList.remove('active');
@@ -1904,7 +2072,7 @@ function getSlowMultiplier(p){
 
 function updateAI(player, dt){
   suppressControlEffects(player);
-  if(player.isHuman || player.stunTimer > 0 || player.nagiCharge > 0 || player.kiyoraSpinTimer > 0) return;
+  if(player.isHuman || player.isRemoteHuman || player.stunTimer > 0 || player.nagiCharge > 0 || player.kiyoraSpinTimer > 0) return;
   if(player.freezeTimer > 0) return; // Frozen by awakened Rin's time freeze
   player.aiTimer -= dt;
   const goalX = player.team === 'blue' ? FIELD.x + FIELD.w : FIELD.x;
@@ -2057,8 +2225,10 @@ function updateTeamTactics(dt){
     ctx.phase = owner ? (owner.team === team ? 'attack' : 'defend') : 'loose';
 
     // A change of possession opens a short transition window.
+    ctx.counterPressTime = TACTICS.counterPressTime * ctx.aggression;
+    ctx.counterPressPlayers = TACTICS.counterPressPlayers + (ctx.aggression > 1 ? 1 : 0);
     if(ctx.possessionTeam !== possessionTeam){
-      if(ctx.possessionTeam) ctx.transitionTimer = TACTICS.counterPressTime;
+      if(ctx.possessionTeam) ctx.transitionTimer = ctx.counterPressTime;
       ctx.possessionTeam = possessionTeam;
     } else if(ctx.transitionTimer > 0){
       ctx.transitionTimer = Math.max(0, ctx.transitionTimer - dt);
@@ -2078,9 +2248,8 @@ function updateTeamTactics(dt){
       const roles = BLAI.chooseLooseBallRoles(candidates, path, FIELD);
       ctx.chaser = roles.chaser; ctx.cover = roles.cover; ctx.intercept = roles.intercept;
     }
-
     // Team shape: attacking targets and defensive targets for every team mate.
-    const helpers = ctx.teammates.filter(p => p.type !== 'goalkeeper' && !p.isHuman);
+    const helpers = ctx.teammates.filter(p => p.type !== 'goalkeeper' && !p.isHuman && !p.isRemoteHuman);
     ctx.attackTargets = BLAI.assignSupportTargets(helpers, ctx, FIELD);
     ctx.defenseTargets = BLAI.assignDefensiveTargets(helpers, ctx, FIELD);
     if(ctx.humanIsCarrier) applyHumanSupport(ctx);
@@ -2104,14 +2273,18 @@ function applyHumanSupport(ctx){
     for(const p of helpers){
       const t = ctx.attackTargets.get(p);
       if(!t || t.kind === 'rest') continue;
+      // A helper that is already ahead of the human keeps his attacking spot:
+      // the one that comes down is the player behind the play.
+      if((t.x - human.x) * ctx.attackDir > 50) continue;
       const d = dist(p, human);
       if(d < bestD){ bestD = d; best = p; }
     }
-    if(best){
+    // Only a helper that is close enough can come down in time.
+    if(best && bestD < 420){
       const t = ctx.attackTargets.get(best);
       const dir = ctx.attackDir;
-      t.x = clamp(human.x - dir * 160, FIELD.x + 40, FIELD.x + FIELD.w - 40);
-      t.y = clamp(human.y + (human.y > ctx.goalY ? -150 : 150), FIELD.y + 40, FIELD.y + FIELD.h - 40);
+      t.x = clamp(human.x - dir * 60, FIELD.x + 40, FIELD.x + FIELD.w - 40);
+      t.y = clamp(human.y + (human.y > ctx.goalY ? -160 : 160), FIELD.y + 40, FIELD.y + FIELD.h - 40);
       t.kind = 'support';
     }
   }
@@ -2139,6 +2312,7 @@ function moveToTarget(player, tx, ty, factor, opts){
   if(o.arriveRadius && d < o.arriveRadius) f *= clamp(d / o.arriveRadius, 0.4, 1);
   if(o.sprintFactor && d > (o.sprintDistance || 99999)) f = Math.max(f, o.sprintFactor);
   f *= getSlowMultiplier(player);
+  f = Math.min(f, TACTICS.maxSpeedFactor);
   moveToward(player, tx, ty, f);
   return f;
 }
@@ -2169,7 +2343,7 @@ function drawAiDebug(){
   ctx.save();
   ctx.font = 'bold 10px Orbitron';
   for(const p of G.players){
-    if(p.isHuman || !p.aiTarget) continue;
+    if(p.isHuman || p.isRemoteHuman || !p.aiTarget) continue;
     const sx = p.x - camX, sy = p.y - camY;
     const tx = p.aiTarget.x - camX, ty = p.aiTarget.y - camY;
     const color = p.team === 'blue' ? 'rgba(0,217,255,0.9)' : 'rgba(255,46,99,0.9)';
@@ -2397,11 +2571,10 @@ function handleSupport(player, dt, goalX, ctx){
   }
   player.aiTarget = { x: t.x, y: t.y, kind: t.kind };
   let factor = (t.kind === 'run' || t.kind === 'box') ? TACTICS.supportRunSpeed : TACTICS.supportSpeed;
-  if(player.team === 'red') factor *= ctx.aggression;
+  // A team mate that is behind the play has to catch up with the attack.
+  if(BLAI.behindBall(player, ctx) > TACTICS.supportSprintGap) factor = Math.max(factor, TACTICS.supportSprintFactor);
   moveToTarget(player, t.x, t.y, factor, {
-    arriveRadius: TACTICS.arriveRadius,
-    sprintFactor: TACTICS.supportSprintFactor,
-    sprintDistance: TACTICS.supportSprintDistance
+    arriveRadius: TACTICS.arriveRadius
   });
 }
 
@@ -2460,11 +2633,10 @@ function handleChase(player, dt, ctx){
   const t = map && map.get(player);
   if(t){
     player.aiTarget = { x: t.x, y: t.y, kind: t.kind };
-    const factor = ourBall ? TACTICS.supportSpeed : TACTICS.pressSpeed;
+    let factor = ourBall ? TACTICS.supportSpeed : TACTICS.pressSpeed;
+    if(!ourBall && BLAI.behindBall(player, ctx) > TACTICS.supportSprintGap) factor = Math.max(factor, TACTICS.recoverySpeed);
     moveToTarget(player, t.x, t.y, factor, {
-      arriveRadius: TACTICS.arriveRadius,
-      sprintFactor: TACTICS.recoverySpeed,
-      sprintDistance: TACTICS.supportSprintDistance
+      arriveRadius: TACTICS.arriveRadius
     });
     return;
   }
@@ -2490,13 +2662,21 @@ function handleDefend(player, dt, ownGoalX, ctx){
   if(profile === 'centralDefender'){
     // Aiku and Karasu defend the middle: they only leave their zone to press
     // a carrier that enters it, otherwise they pick up their rival.
-    markDist = 300; pressSpeed = 1.5;
+    markDist = 480; pressSpeed = 1.5;
   }
   else if(profile === 'hybrid'){
     // Reo steps out of his line to press and to start the counter attack.
     markDist = 380; pressSpeed = 1.45;
   }
-  if(ctx.transitionTimer > 0 && closer < TACTICS.counterPressPlayers){
+  else if(profile === 'presser'){
+    // Karasu is a defensive midfielder that hunts the ball: he presses from
+    // far away and traps the carrier together with Reo.
+    markDist = 520; pressSpeed = 1.55;
+  }
+  else if(profile === 'striker'){
+    // Shidou and Barou press high and look for the counter attack.
+    markDist = 300; pressSpeed = 1.2;
+  }  if(ctx.transitionTimer > 0 && closer < ctx.counterPressPlayers){
     // Counter press: the ball is won back before the rival can build.
     markDist = TACTICS.counterPressMarkDist;
     pressSpeed = TACTICS.recoverySpeed;
@@ -2505,12 +2685,26 @@ function handleDefend(player, dt, ownGoalX, ctx){
   else if(player.role === 'MID') { markDist = Math.max(markDist, 300); pressSpeed = Math.max(pressSpeed, 1.2); }
   else if(player.role === 'FWD') { const oppHalf = player.team === 'blue' ? owner.x > FIELD.x + FIELD.w/2 : owner.x < FIELD.x + FIELD.w/2; if(oppHalf) { markDist = 220; pressSpeed = 1.05; } else { markDist = 160; pressSpeed = 0.95; } }
   pressSpeed *= ctx.aggression * getSlowMultiplier(player);
+  pressSpeed = Math.min(pressSpeed, TACTICS.maxSpeedFactor);
   // A central defender does not chase the carrier all over the pitch: he
-  // protects his channel and marks his rival.
-  const canPress = profile !== 'centralDefender' || Math.abs(owner.y - ctx.goalY) < 260 || distToOwner < 180;
+  // protects his zone and marks his rival. He does come out when the carrier
+  // enters the zone he defends, which goes well past the goal area.
+  const carrierInZone = Math.abs(owner.x - ctx.ownGoalX) < TACTICS.centralDefenderZone;
+  const canPress = profile !== 'centralDefender' || carrierInZone || distToOwner < 180;
   if(distToOwner < markDist && canPress){
-    player.aiTarget = { x: owner.x, y: owner.y, kind: 'press' };
-    moveToward(player, owner.x, owner.y, pressSpeed);
+    // Two pressers trap the carrier: the second one covers his escape side.
+    let trapOffset = 0;
+    if(profile === 'presser' || profile === 'hybrid'){
+      for(const m of ctx.teammates){
+        if(m === player || m.type === 'goalkeeper') continue;
+        const mp = BLAI.profileOf(m);
+        if(mp !== 'presser' && mp !== 'hybrid') continue;
+        if(dist(m, owner) < distToOwner){ trapOffset = 90; break; }
+      }
+    }
+    const tx = owner.x, ty = owner.y + (trapOffset ? (owner.y > ctx.goalY ? -trapOffset : trapOffset) : 0);
+    player.aiTarget = { x: tx, y: ty, kind: 'press' };
+    moveToward(player, tx, ty, pressSpeed);
     if(distToOwner < PLAYER_R * (player.size + owner.size) + 10 && player.canTackle()){ player.tackle(); }
     return;
   }
@@ -2523,11 +2717,10 @@ function handleDefend(player, dt, ownGoalX, ctx){
   const t = ctx.defenseTargets && ctx.defenseTargets.get(player);
   if(t){
     player.aiTarget = { x: t.x, y: t.y, kind: t.kind };
-    moveToTarget(player, t.x, t.y, pressSpeed * 0.9, {
-      arriveRadius: TACTICS.arriveRadius,
-      sprintFactor: TACTICS.recoverySpeed,
-      sprintDistance: TACTICS.supportSprintDistance
-    });
+    let factor = pressSpeed * 0.9;
+    // A player that pushed too far up sprints back to his position.
+    if(BLAI.behindBall(player, ctx) > TACTICS.supportSprintGap) factor = Math.max(factor, TACTICS.recoverySpeed);
+    moveToTarget(player, t.x, t.y, factor, { arriveRadius: TACTICS.arriveRadius });
     return;
   }
   const bp = getBasePos(player);
@@ -2595,21 +2788,30 @@ function handleShotReact(player, dt, ownGoalX, goalX, ctx){
 function checkAikuIntercept(){
   for(const p of G.players){
     if(p.rivalKey !== 'aiku' || p.activeCd > 0) continue;
-    if(G.ball.state === 'shot' && G.ball.z < 25){
+    if(G.ball.state === 'shot' && G.ball.z < 40){
       const ballGoingToGoal = (p.team === 'red' && G.ball.vx < -1) || (p.team === 'blue' && G.ball.vx > 1);
-      if(ballGoingToGoal && dist(p, G.ball) < 500 && Math.random() < 0.30){
-        p.useAbility();
+      if(ballGoingToGoal){
+        // He reads the shot: as soon as he detects that it is going to pass
+        // near him, he raises the wall to block it.
+        if(BLAI.shotPassesNear(p, G.ball) && Math.random() < 0.85){
+          p.useAbility();
+          p.aiTimer = 0.8;
+          continue;
+        }
+        if(dist(p, G.ball) < 500 && Math.random() < 0.30){
+          p.useAbility();
+        }
       }
     }
     // Aiku also proactively uses intercept when an opponent ball carrier is near
     if(G.ball.owner && G.ball.owner.team !== p.team && p.aiTimer <= 0){
       const ownGoalX = p.team === 'red' ? FIELD.x + FIELD.w : FIELD.x;
       const dToOwnGoal = Math.abs(G.ball.owner.x - ownGoalX);
-      if(dToOwnGoal < 700 && dist(p, G.ball.owner) < 250 && Math.random() < 0.25){
+      if(dToOwnGoal < 900 && dist(p, G.ball.owner) < 300 && Math.random() < 0.3){
         p.useAbility(); p.aiTimer = 1.0;
       }
       // Aiku also uses intercept when ball is free/passed and nearby
-      if((G.ball.state === 'free' || G.ball.state === 'pass') && dist(p, G.ball) < 150 && Math.random() < 0.15){
+      if((G.ball.state === 'free' || G.ball.state === 'pass') && dist(p, G.ball) < 200 && Math.random() < 0.18){
         p.useAbility(); p.aiTimer = 1.0;
       }
     }
@@ -2620,27 +2822,22 @@ function checkAikuIntercept(){
 function checkDefensiveAbilities(){
   const abMult = DIFFICULTY[G.difficulty].rivalAbility;
   for(const p of G.players){
-    if(p.team !== 'red' || p.activeCd > 0 || p.hasBall || p.isHuman) continue;
+    if(p.team !== 'red' || p.activeCd > 0 || p.hasBall || p.isHuman || p.isRemoteHuman) continue;
     
-    // KARASU: Use zone control when enemy ball carrier is nearby
+    // KARASU: CROW DEFENSE — speed boost and steal on contact, used to hunt
+    // the rival carrier or to reach a loose ball faster.
     if(p.rivalKey === 'karasu'){
       const owner = G.ball.owner;
       if(owner && owner.team !== p.team){
         const dToOwner = dist(p, owner);
-        // Trigger when enemy with ball is within range and heading toward our goal
-        if(dToOwner < 200 && Math.random() < 0.08 * abMult){
+        // Trigger when the enemy carrier is close enough to be robbed.
+        if(dToOwner < 280 && Math.random() < 0.22 * abMult){
           p.useAbility();
           p.aiTimer = 1.5;
-          // After using zone control, immediately try to tackle the stunned carrier
-          setTimeout(() => {
-            if(G.ball.owner && G.ball.owner.team !== p.team && dist(p, G.ball.owner) < 80 && p.canTackle()){
-              p.tackle();
-            }
-          }, 500);
         }
       }
-      // Also use when ball is free and near
-      if((G.ball.state === 'free' || G.ball.state === 'pass') && dist(p, G.ball) < 120 && Math.random() < 0.06 * abMult){
+      // Also use it to run down a loose ball.
+      if((G.ball.state === 'free' || G.ball.state === 'pass') && dist(p, G.ball) < 220 && Math.random() < 0.14 * abMult){
         p.useAbility();
         p.aiTimer = 1.0;
       }
@@ -2651,10 +2848,15 @@ function checkDefensiveAbilities(){
       const owner = G.ball.owner;
       if(owner && owner.team !== p.team){
         const dToOwner = dist(p, owner);
-        if(dToOwner < 200 && Math.random() < 0.18 * abMult){
+        if(dToOwner < 260 && Math.random() < 0.28 * abMult){
           p.useAbility();
           p.aiTimer = 1.5;
         }
+      }
+      // With the short cooldown he keeps the wall up even for a loose ball.
+      if((G.ball.state === 'free' || G.ball.state === 'pass') && dist(p, G.ball) < 200 && Math.random() < 0.18 * abMult){
+        p.useAbility();
+        p.aiTimer = 1.0;
       }
     }
 
@@ -2721,7 +2923,7 @@ function getIsagiDirectShotSpeedMult(player){
 function getBasePos(player){ if(player.team === 'blue' && player.formationHome) return {x:player.formationHome.x, y:player.formationHome.y}; const t = player.team === 'blue' ? 1 : -1; const cx = FIELD.x + FIELD.w/2; let baseX = cx; if(player.role === 'DEF') baseX = cx - t * 1050; else if(player.role === 'MID') baseX = cx - t * 520; else if(player.role === 'FWD') baseX = cx - t * 120; const baseY = FIELD.y + FIELD.h/2 + (player.y - (FIELD.y+FIELD.h/2)) * 0.5; return {x: baseX, y: baseY}; }
 
 function updateCamera(){
-  const activePlayer = getActivePlayer();
+  const activePlayer = getViewPlayer();
   if(!activePlayer) return;
   const viewW = W / GAME_SCALE, viewH = H / GAME_SCALE;
   let targetX = activePlayer.x - viewW/2;
@@ -2735,7 +2937,18 @@ function updateCamera(){
   camY = lerp(camY, targetY, 0.08);
 }
 
+function getViewPlayer(){
+  if(G.netMode === 'guest' && G.localPlayerId){
+    const guest = G.players.find(p => p.id === G.localPlayerId);
+    if(guest) return guest;
+  }
+  return getActivePlayer();
+}
 function getActivePlayer(){
+  if(G.netMode === 'guest' && G.localPlayerId){
+    const guest = G.players.find(p => p.id === G.localPlayerId);
+    if(guest){ G._cachedHuman = guest; return guest; }
+  }
   if(G._cachedHuman && G._cachedHuman.isHuman) return G._cachedHuman;
   G._cachedHuman = G.players.find(p => p.isHuman) || null;
   return G._cachedHuman;
@@ -2745,6 +2958,113 @@ function switchToHumanPlayer(player){ if(!player || player.team !== 'blue' || pl
 function updateHumanPlayer(dt){ const p = getActivePlayer(); if(!p) return; suppressControlEffects(p); if(p.stunTimer > 0 || p.nagiCharge > 0 || p.freezeTimer > 0 || p.kiyoraSpinTimer > 0) return; let mx = 0, my = 0; if(keys['KeyW'] || keys['ArrowUp'] || keys['_mW']) my -= 1; if(keys['KeyS'] || keys['ArrowDown'] || keys['_mS']) my += 1; if(keys['KeyA'] || keys['ArrowLeft'] || keys['_mA']) mx -= 1; if(keys['KeyD'] || keys['ArrowRight'] || keys['_mD']) mx += 1; if(mx !== 0 || my !== 0){ const l = Math.hypot(mx, my); mx /= l; my /= l; let speed = p.speed; if(p.activeTimer > 0 && p.heroKey === 'chigiri') speed *= (p.isAwakened ? 1.5 : 1.3);
   if(p.activeTimer > 0 && p.heroKey === 'bachira') speed *= 1.0;
   if(p.activeTimer > 0 && p.heroKey === 'kiyora') speed *= (p.isAwakened ? 1.4 : 1.3); speed *= getIsagiDirectShotSpeedMult(p); if(p.rivalKey === 'sae' && p.saeFlowTimer > 0) speed *= 1.35; if(p.dashTimer > 0 && p.heroKey === 'yukimiya') speed *= 1.0; if(p.hasBall && p.heroKey !== 'bachira' && p.heroKey !== 'chigiri' && p.heroKey !== 'yukimiya' && p.heroKey !== 'kurona' && p.heroKey !== 'kiyora') speed *= 0.9; speed *= getSlowMultiplier(p); p.vx += mx * speed * 0.2; p.vy += my * speed * 0.2; } }
+
+function readGuestInput(){
+  return {
+    up: !!(keys['KeyW'] || keys['ArrowUp'] || keys['_mW']),
+    down: !!(keys['KeyS'] || keys['ArrowDown'] || keys['_mS']),
+    left: !!(keys['KeyA'] || keys['ArrowLeft'] || keys['_mA']),
+    right: !!(keys['KeyD'] || keys['ArrowRight'] || keys['_mD'])
+  };
+}
+function inputRemoteAction(action){
+  if(G.netMode !== 'guest' || !netRoom) return;
+  netRoom.sendInput(readGuestInput(), [action]);
+}
+function sendGuestInput(dt){
+  if(G.netMode !== 'guest' || !netRoom) return;
+  netInputTimer += dt;
+  if(netInputTimer < NET_INPUT_INTERVAL) return;
+  netInputTimer = 0;
+  netRoom.sendInput(readGuestInput(), []);
+}
+function applyLatestSnapshot(){
+  if(G.netMode !== 'guest' || !netLatestSnapshot) return;
+  const snapshot = netLatestSnapshot;
+  netLatestSnapshot = null;
+  const wasPaused = !!G.paused;
+  BLSnapshot.applyMatch(G, snapshot, { Player, Ball });
+  if(G.localPlayerId){
+    G._cachedHuman = G.players.find(p => p.id === G.localPlayerId) || null;
+  }
+  if(!!snapshot.paused !== wasPaused) applyNetworkPause(!!snapshot.paused);
+}
+function sendHostSnapshot(dt){
+  if(G.netMode !== 'host' || !netRoom || !netMatchReady) return;
+  netSnapshotTimer += dt;
+  if(netSnapshotTimer < NET_SNAPSHOT_INTERVAL) return;
+  netSnapshotTimer = 0;
+  netRoom.sendSnapshot(BLSnapshot.serializeMatch(G));
+}
+function processRemoteAction(p, action){
+  if(!p) return;
+  if(action === 'pass'){
+    if(p.hasBall && p.nagiCharge <= 0){
+      const target = p.findBestPassTarget();
+      if(target) p.doPass(target);
+    } else if(p.nagiCharge <= 0){
+      const mates = G.players.filter(m => m.team === p.team && m.hasBall);
+      if(mates.length > 0){
+        const mate = mates[0];
+        const d = dist(mate, p);
+        if(d > 40 && d < 550) mate.doPass(p);
+      }
+    }
+    return;
+  }
+  if(action === 'shootStart'){
+    if(p.hasBall && p.nagiCharge <= 0) p.startShotCharge();
+    return;
+  }
+  if(action === 'shootRelease'){
+    if(p.shotCharging) p.releaseShotCharge();
+    return;
+  }
+  if(action === 'shootCancel'){ p.cancelShotCharge(); return; }
+  if(action === 'ability'){
+    p.cancelShotCharge();
+    if(p.nagiCharge <= 0) p.useAbility();
+    return;
+  }
+  if(action === 'tackle'){
+    p.cancelShotCharge();
+    if(!p.hasBall) p.tackle();
+    return;
+  }
+  if(action === 'awaken'){
+    if(p.awakening >= 100 && !p.isAwakened) grantAwakening(p);
+    return;
+  }
+  if(action === 'pause'){ togglePause(); return; }
+}
+function updateRemotePlayer(dt){
+  if(G.netMode !== 'host' || !G.remoteGuestId) return;
+  const p = G.players.find(player => player.id === G.remoteGuestId);
+  if(!p) return;
+  suppressControlEffects(p);
+  if(p.stunTimer > 0 || p.nagiCharge > 0 || p.freezeTimer > 0 || p.kiyoraSpinTimer > 0) return;
+  const input = netRemoteInput;
+  let mx = 0, my = 0;
+  if(input.up) my -= 1;
+  if(input.down) my += 1;
+  if(input.left) mx -= 1;
+  if(input.right) mx += 1;
+  if(mx !== 0 || my !== 0){
+    const l = Math.hypot(mx, my);
+    mx /= l; my /= l;
+    let speed = p.speed;
+    if(p.activeTimer > 0 && p.heroKey === 'chigiri') speed *= (p.isAwakened ? 1.5 : 1.3);
+    if(p.activeTimer > 0 && p.heroKey === 'kiyora') speed *= (p.isAwakened ? 1.4 : 1.3);
+    speed *= getIsagiDirectShotSpeedMult(p);
+    if(p.rivalKey === 'sae' && p.saeFlowTimer > 0) speed *= 1.35;
+    speed *= getSlowMultiplier(p);
+    p.vx += mx * speed * 0.2;
+    p.vy += my * speed * 0.2;
+  }
+  while(netRemoteActions.length > 0){
+    processRemoteAction(p, netRemoteActions.shift());
+  }
+}
 
 function spawnParticles(x, y, color, count){ if(G.particles.length > MAX_PARTICLES) return; for(let i = 0; i < count; i++){ const ang = Math.random() * Math.PI * 2; const sp = 1 + Math.random() * 4; G.particles.push({x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0.5 + Math.random() * 0.5, maxLife: 1.0, color, size: 2 + Math.random() * 3}); } }
 function updateParticles(dt){ 
@@ -3264,7 +3584,49 @@ function drawNagiSkull(){
   ctx.restore();
 }
 
-function drawField(){ ctx.fillStyle = '#0a1e12'; ctx.fillRect(0, 0, W / GAME_SCALE, H / GAME_SCALE); const fx = FIELD.x - camX, fy = FIELD.y - camY; const stripeW = FIELD.w / 24; for(let i = 0; i < 24; i++){ ctx.fillStyle = i % 2 === 0 ? '#0d3a1e' : '#0f4524'; ctx.fillRect(fx + i * stripeW, fy, stripeW, FIELD.h); } ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 3; ctx.strokeRect(fx, fy, FIELD.w, FIELD.h); ctx.beginPath(); ctx.moveTo(fx + FIELD.w/2, fy); ctx.lineTo(fx + FIELD.w/2, fy + FIELD.h); ctx.stroke(); ctx.beginPath(); ctx.arc(fx + FIELD.w/2, fy + FIELD.h/2, 90, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(fx + FIELD.w/2, fy + FIELD.h/2, 5, 0, Math.PI * 2); ctx.fill(); const areaW = 200, areaH = 440; ctx.strokeRect(fx, fy + FIELD.h/2 - areaH/2, areaW, areaH); ctx.strokeRect(fx + FIELD.w - areaW, fy + FIELD.h/2 - areaH/2, areaW, areaH); const smallW = 80, smallH = 220; ctx.strokeRect(fx, fy + FIELD.h/2 - smallH/2, smallW, smallH); ctx.strokeRect(fx + FIELD.w - smallW, fy + FIELD.h/2 - smallH/2, smallW, smallH); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(fx + 140, fy + FIELD.h/2, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(fx + FIELD.w - 140, fy + FIELD.h/2, 4, 0, Math.PI * 2); ctx.fill(); drawGoal(fx, fy + FIELD.h/2, 'left'); drawGoal(fx + FIELD.w, fy + FIELD.h/2, 'right'); ctx.strokeStyle = 'rgba(0,217,255,0.15)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy + FIELD.h); ctx.stroke(); ctx.strokeStyle = 'rgba(255,46,99,0.15)'; ctx.beginPath(); ctx.moveTo(fx + FIELD.w, fy); ctx.lineTo(fx + FIELD.w, fy + FIELD.h); ctx.stroke(); }
+function drawField(){
+  ctx.fillStyle = '#0a1e12'; ctx.fillRect(0, 0, W / GAME_SCALE, H / GAME_SCALE);
+  const fx = FIELD.x - camX, fy = FIELD.y - camY;
+  const cx = fx + FIELD.w / 2, cy = fy + FIELD.h / 2;
+  // Grass stripes
+  const stripeW = FIELD.w / 24;
+  for(let i = 0; i < 24; i++){ ctx.fillStyle = i % 2 === 0 ? '#0d3a1e' : '#0f4524'; ctx.fillRect(fx + i * stripeW, fy, stripeW, FIELD.h); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
+  // Boundary and halfway line
+  ctx.strokeRect(fx, fy, FIELD.w, FIELD.h);
+  ctx.beginPath(); ctx.moveTo(cx, fy); ctx.lineTo(cx, fy + FIELD.h); ctx.stroke();
+  // Centre circle and spot
+  ctx.beginPath(); ctx.arc(cx, cy, CENTER_CIRCLE_R, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
+  // Penalty area, goal area, penalty spot and penalty arc on both ends. The
+  // arc is only drawn outside the penalty area, exactly like a real pitch.
+  const arcLimit = Math.acos(clamp((AREA.w - PENALTY_SPOT) / PENALTY_ARC_R, -1, 1));
+  for(let side = 0; side < 2; side++){
+    const left = side === 0;
+    const goalX = left ? fx : fx + FIELD.w;
+    const dir = left ? 1 : -1;
+    ctx.strokeRect(left ? fx : fx + FIELD.w - AREA.w, cy - AREA.h / 2, AREA.w, AREA.h);
+    ctx.strokeRect(left ? fx : fx + FIELD.w - SMALL_AREA.w, cy - SMALL_AREA.h / 2, SMALL_AREA.w, SMALL_AREA.h);
+    const spotX = goalX + dir * PENALTY_SPOT;
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.beginPath(); ctx.arc(spotX, cy, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    if(left) ctx.arc(spotX, cy, PENALTY_ARC_R, -arcLimit, arcLimit);
+    else ctx.arc(spotX, cy, PENALTY_ARC_R, Math.PI - arcLimit, Math.PI + arcLimit);
+    ctx.stroke();
+  }
+  // Corner arcs
+  ctx.beginPath(); ctx.arc(fx, fy, CORNER_ARC_R, 0, Math.PI / 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(fx + FIELD.w, fy, CORNER_ARC_R, Math.PI / 2, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(fx + FIELD.w, fy + FIELD.h, CORNER_ARC_R, Math.PI, Math.PI * 1.5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(fx, fy + FIELD.h, CORNER_ARC_R, Math.PI * 1.5, Math.PI * 2); ctx.stroke();
+  drawGoal(fx, cy, 'left'); drawGoal(fx + FIELD.w, cy, 'right');
+  ctx.strokeStyle = 'rgba(0,217,255,0.15)'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy + FIELD.h); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,46,99,0.15)';
+  ctx.beginPath(); ctx.moveTo(fx + FIELD.w, fy); ctx.lineTo(fx + FIELD.w, fy + FIELD.h); ctx.stroke();
+}
 function drawGoal(x, y, side){ const gk = GOAL_W / 2; ctx.fillStyle = 'rgba(0,0,0,0.4)'; if(side === 'left'){ ctx.fillRect(x - GOAL_DEPTH, y - gk, GOAL_DEPTH, GOAL_W); } else { ctx.fillRect(x, y - gk, GOAL_DEPTH, GOAL_W); } ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; if(side === 'left'){ for(let i = 0; i <= 8; i++){ ctx.beginPath(); ctx.moveTo(x - GOAL_DEPTH, y - gk + (GOAL_W/8)*i); ctx.lineTo(x, y - gk + (GOAL_W/8)*i); ctx.stroke(); } for(let i = 0; i <= 4; i++){ ctx.beginPath(); ctx.moveTo(x - GOAL_DEPTH + (GOAL_DEPTH/4)*i, y - gk); ctx.lineTo(x - GOAL_DEPTH + (GOAL_DEPTH/4)*i, y + gk); ctx.stroke(); } } else { for(let i = 0; i <= 8; i++){ ctx.beginPath(); ctx.moveTo(x, y - gk + (GOAL_W/8)*i); ctx.lineTo(x + GOAL_DEPTH, y - gk + (GOAL_W/8)*i); ctx.stroke(); } for(let i = 0; i <= 4; i++){ ctx.beginPath(); ctx.moveTo(x + (GOAL_DEPTH/4)*i, y - gk); ctx.lineTo(x + (GOAL_DEPTH/4)*i, y + gk); ctx.stroke(); } } const postColor = side === 'left' ? '#00d9ff' : '#ff2e63'; ctx.fillStyle = postColor; ctx.shadowColor = postColor; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(x, y - gk, 7, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(x, y + gk, 7, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
 
 function drawMinimap(){ const mm = document.getElementById('minimap'); const mctx = mm.getContext('2d'); mctx.clearRect(0, 0, mm.width, mm.height); mctx.fillStyle = 'rgba(10,30,20,0.8)'; mctx.fillRect(0, 0, mm.width, mm.height); mctx.strokeStyle = 'rgba(255,255,255,0.3)'; mctx.lineWidth = 1; mctx.strokeRect(2, 2, mm.width - 4, mm.height - 4); mctx.beginPath(); mctx.moveTo(mm.width/2, 2); mctx.lineTo(mm.width/2, mm.height - 2); mctx.stroke(); mctx.fillStyle = '#00d9ff'; mctx.fillRect(0, mm.height/2 - 6, 3, 12); mctx.fillStyle = '#ff2e63'; mctx.fillRect(mm.width - 3, mm.height/2 - 6, 3, 12); for(const p of G.players){ const mx = (p.x / FIELD.w) * (mm.width - 4) + 2; const my = (p.y / FIELD.h) * (mm.height - 4) + 2; mctx.fillStyle = p.team === 'blue' ? '#00d9ff' : '#ff2e63'; mctx.beginPath(); mctx.arc(mx, my, p.hasBall ? 3 : 2, 0, Math.PI * 2); mctx.fill(); } if(G.ball){ const bx = (G.ball.x / FIELD.w) * (mm.width - 4) + 2; const by = (G.ball.y / FIELD.h) * (mm.height - 4) + 2; mctx.fillStyle = '#ffff00'; mctx.beginPath(); mctx.arc(bx, by, 2, 0, Math.PI * 2); mctx.fill(); } const camStart = (camX / FIELD.w) * (mm.width - 4) + 2; const camEnd = ((camX + W) / FIELD.w) * (mm.width - 4) + 2; mctx.strokeStyle = 'rgba(255,255,255,0.4)'; mctx.lineWidth = 1; mctx.strokeRect(camStart, 2, camEnd - camStart, mm.height - 4); }
@@ -3330,7 +3692,7 @@ function resetPlayerState(p){
   p.kaiserRouteTimer = 0; p.kaiserRouteShotTimer = 0; p.kaiserRoutePhase = 0;
   p.isagiAutoTimer = 0; p.isagiAutoPending = false;
   p.aiState = 'idle'; p.aiTimer = 0; p.aiTarget = null; p.tacticalLane = null;
-  p.gkRushTimer = 0;
+  p.gkRushTimer = 0; p.crowDefenseTimer = 0; p.speedBuff = 1;
   p.bachiraCombo = false; p.bachiraComboPhase = 0; p.bachiraComboTimer = 0; p.bachiraBallImmune = 0;
   p.yukimiyaBobaQueue = 0; p.yukimiyaBobaTimer = 0; p.yukimiyaBobaSide = 1;
   p.yukimiyaControlImmune = 0;
@@ -3370,7 +3732,16 @@ function resetPositions(){
     {x: cx + 120, y: FIELD.y + FIELD.h/2 + 140}
   ];
   let redIdx = 0; const redRoles = ['GK', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD'];
-  G.players.forEach(p => { if(p.team !== 'red') return; const f = redFormation[redIdx]; p.role = redRoles[redIdx]; p.x = f.x; p.y = f.y; p.formationHome = { x: f.x, y: f.y }; resetPlayerState(p); redIdx++; });
+  G.players.forEach(p => {
+    if(p.team !== 'red') return;
+    const f = redFormation[redIdx];
+    p.role = redRoles[redIdx];
+    // Some characters play a different role than the slot they occupy.
+    if(RIVAL_ROLE_OVERRIDES[p.rivalKey]) p.role = RIVAL_ROLE_OVERRIDES[p.rivalKey];
+    p.x = f.x; p.y = f.y; p.formationHome = { x: f.x, y: f.y };
+    resetPlayerState(p);
+    redIdx++;
+  });
   G.ball.x = cx; G.ball.y = FIELD.y + FIELD.h/2; G.ball.z = 0; G.ball.vx = 0; G.ball.vy = 0; G.ball.vz = 0; G.ball.state = 'free'; G.ball.owner = null; G.ball.passTarget = null; G.ball.perfectHoming = false; G.ball.uninterceptablePass = false; G.ball.lastShooter = null; G.ball.lastPasser = null; G.ball.lastPassTime = 0; G.ball.shotPower = 0; G.ball.spin = 0; G.ball.rotation = 0; G.ball.dribblePhase = 0; G.ball.shidouShot = false; G.ball.shidouGuaranteed = false; G.ball.saeGuaranteed = false; G.ball.massDestructionShot = false; G.ball.nagiAwakened = false; G.ball.isagiAwakened = false; G.ball.rinCurved = false; G.ball.rinFarPostY = 0; G.ball.planetaryHotline = null; G.ball.lastTouch = null; G.ball.lastTouchTeam = null; G.ball.lastTouchTime = 0; G.illusions = []; G.yukimiyaGhosts = []; G.hioriSnowfields = []; G.kuronaBlackHoles = []; G.karasuCrow = null; G.particles = []; G.trails = []; G.cameraShake = 0; G.recentSave = { team: null, timer: 0 }; G.shidouAnimActive = false; G.shidouAnimTimer = 0; G.shidouAnimPlayer = null;
   resetTactics();
   SFX.whistle(false);
@@ -3395,18 +3766,24 @@ function resetTactics(){
 
 
 function createPlayers(){
-  G.players = []; G._cachedHuman = null; const cx = FIELD.x + FIELD.w/2;
+  G.players = []; G._cachedHuman = null; G.remoteGuestId = null;
+  const cx = FIELD.x + FIELD.w/2;
   const match = MATCHES[G.selectedMatch];
   const formationSlots = getFormationWithGK(G.selectedMatch, G.selectedHero);
+  let nextPlayerId = 0;
   formationSlots.forEach(slot => {
     const isGK = slot.key === 'gagamaru';
     const p = new Player(slot.x, slot.y, 'blue', isGK ? 'goalkeeper' : 'hero', slot.key, slot.role);
+    p.id = 'b' + (nextPlayerId++);
     p.formationHome = { x: slot.x, y: slot.y };
     if(!isGK && slot.key === G.selectedHero) p.isHuman = true;
     G.players.push(p);
   });
   const gkName = RIVAL_GK_NAMES[Math.floor(Math.random() * RIVAL_GK_NAMES.length)];
-  const rivalGK = new Player(FIELD.x + FIELD.w - 60, FIELD.y + FIELD.h/2, 'red', 'goalkeeper', 'rival_gk', 'GK'); rivalGK.gkName = gkName; G.players.push(rivalGK);
+  const rivalGK = new Player(FIELD.x + FIELD.w - 60, FIELD.y + FIELD.h/2, 'red', 'goalkeeper', 'rival_gk', 'GK');
+  rivalGK.id = 'r' + (nextPlayerId++);
+  rivalGK.gkName = gkName;
+  G.players.push(rivalGK);
   const redHeroPos = [ 
     {x: cx + 1050, y: FIELD.y + 160, role:'DEF'}, 
     {x: cx + 1050, y: FIELD.y + FIELD.h/2, role:'DEF'},
@@ -3418,17 +3795,47 @@ function createPlayers(){
     {x: cx + 120, y: FIELD.y + FIELD.h/2 + 140, role:'FWD'} 
   ];
   const redOrder = match.redRivals;
-  redOrder.forEach((rk, i) => { const pos = redHeroPos[i]; const p = new Player(pos.x, pos.y, 'red', 'hero', rk, pos.role); p.formationHome = { x: pos.x, y: pos.y }; G.players.push(p); });
+  redOrder.forEach((rk, i) => {
+    const pos = redHeroPos[i];
+    const p = new Player(pos.x, pos.y, 'red', 'hero', rk, pos.role);
+    p.id = 'r' + (nextPlayerId++);
+    // Some characters play a different role than the slot they occupy.
+    if(RIVAL_ROLE_OVERRIDES[rk]) p.role = RIVAL_ROLE_OVERRIDES[rk];
+    p.formationHome = { x: pos.x, y: pos.y };
+    G.players.push(p);
+  });
   // Apply difficulty-based rival speed boost
   const speedMult = DIFFICULTY[G.difficulty].rivalSpeed;
   for(const p of G.players){ if(p.team === 'red' && p.type === 'hero') p.speed *= speedMult; }
+  if(G.netMode === 'host' && G.remoteGuestHero){
+    let guestPlayer = G.players.find(p => p.team === 'red' && p.type === 'hero' && p.rivalKey === G.remoteGuestHero);
+    if(!guestPlayer) guestPlayer = G.players.find(p => p.team === 'red' && p.type === 'hero' && p.role === 'FWD');
+    if(!guestPlayer) guestPlayer = G.players.find(p => p.team === 'red' && p.type === 'hero');
+    if(guestPlayer){
+      guestPlayer.isRemoteHuman = true;
+      G.remoteGuestId = guestPlayer.id;
+    }
+  }
 }
 
 function animate(now){
-  requestAnimationFrame(animate); const dt = Math.min(Math.max((now - G.lastTime) / 1000, 0), 0.05); G.lastTime = now;
+  // Keep exactly one requestAnimationFrame chain alive. A slow watchdog below
+  // can call animate() when the tab is hidden and the browser pauses rAF, which
+  // is important for the authoritative host in a private room.
+  if(!rafScheduled){
+    rafScheduled = true;
+    requestAnimationFrame(function(nextNow){ rafScheduled = false; animate(nextNow); });
+  }
+  const dt = Math.min(Math.max((now - G.lastTime) / 1000, 0), 0.05); G.lastTime = now;
   if(G.gameRunning){
     // === PAUSE: skip all updates, just render ===
     if(G.paused){
+      // A guest can still ask to resume while the host is paused. Only pause
+      // actions are honoured here; any stale movement/action input is dropped.
+      if(G.netMode === 'host' && netRemoteActions.length){
+        const actions = netRemoteActions.splice(0);
+        if(actions.includes('pause')) togglePause();
+      }
       ctx.save();
       if(GAME_SCALE !== 1.0){
         ctx.scale(GAME_SCALE, GAME_SCALE);
@@ -3479,39 +3886,54 @@ function animate(now){
       ctx.restore();
       return;
     }
-    if(!G.goalCelebrating){ G.timeLeft -= dt; if(G.timeLeft <= 0){ G.timeLeft = 0; endGame(); } updateTimerUI(); }
-    updateHumanPlayer(dt); updateTeamTactics(dt); for(const p of G.players) updateAI(p, dt); for(const p of G.players) p.update(dt);
-    G.ball.update(dt); updateParticles(dt); updateHioriSnowfields(dt); updateKuronaBlackHoles(dt); updateKarasuCrow(dt); updateBarouLionAura(dt); updateCamera();
-    // === SHIDOU ANIMATION TIMER ===
-    if(G.shidouAnimActive){
-      G.shidouAnimTimer -= dt;
-      if(G.shidouAnimTimer <= 0) G.shidouAnimActive = false;
+    if(G.netMode === 'guest'){
+      // The guest never simulates. It applies the host snapshot, moves the
+      // camera and sends its input back at a fixed rate.
+      applyLatestSnapshot();
+      updateCamera();
+      updateScoreUI(); updateTimerUI(); updateHeroPanel(getActivePlayer());
+      updateCooldownUI(); updateShotChargeUI(); updatePosIndicator(); updateBallOwnerTag();
+      updatePossessionBar();
+      sendGuestInput(dt);
+      if(!animate._mmFrame) animate._mmFrame = 0; if(++animate._mmFrame % 3 === 0) drawMinimap();
+    } else {
+      if(!G.goalCelebrating){ G.timeLeft -= dt; if(G.timeLeft <= 0){ G.timeLeft = 0; endGame(); } updateTimerUI(); }
+      updateHumanPlayer(dt);
+      if(G.netMode === 'host') updateRemotePlayer(dt);
+      updateTeamTactics(dt); for(const p of G.players) updateAI(p, dt); for(const p of G.players) p.update(dt);
+      G.ball.update(dt); updateParticles(dt); updateHioriSnowfields(dt); updateKuronaBlackHoles(dt); updateKarasuCrow(dt); updateBarouLionAura(dt); updateCamera();
+      // === SHIDOU ANIMATION TIMER ===
+      if(G.shidouAnimActive){
+        G.shidouAnimTimer -= dt;
+        if(G.shidouAnimTimer <= 0) G.shidouAnimActive = false;
+      }
+      checkAikuIntercept();
+      checkDefensiveAbilities();
+      // === POWER-UPS ===
+      G.powerupSpawnTimer -= dt;
+      if(G.powerupSpawnTimer <= 0 && G.powerups.length < 3 && !G.goalCelebrating){
+        spawnPowerup();
+        G.powerupSpawnTimer = 10 + Math.random() * 8;
+      }
+      for(const pu of G.powerups) pu.life -= dt;
+      checkPowerupPickups();
+      updatePowerupHud();
+      // === COMBOS ===
+      updateCombos(dt);
+      // Record replay frame (for goal replay)
+      recordReplayFrame();
+      // Track possession time
+      if(G.ball.owner && !G.goalCelebrating){
+        if(G.ball.owner.team === 'blue') G.stats.possBlueTime += dt; else G.stats.possRedTime += dt;
+      }
+      updatePossessionBar();
+      if(G.cameraShake > 0) G.cameraShake *= 0.9; if(G.cameraShake < 0.1) G.cameraShake = 0;
+      updateCooldownUI(); updateShotChargeUI(); updatePosIndicator(); updateBallOwnerTag();
+      if(!animate._mmFrame) animate._mmFrame = 0; if(++animate._mmFrame % 3 === 0) drawMinimap();
+      if(G.goalCelebrating){ G.goalTimer -= dt; if(G.goalTimer <= 0){ G.goalCelebrating = false; resetPositions(); } }
+      if(G.recentSave.timer > 0){ G.recentSave.timer -= dt; if(G.recentSave.timer <= 0) G.recentSave.team = null; }
+      if(G.netMode === 'host') sendHostSnapshot(dt);
     }
-    checkAikuIntercept();
-    checkDefensiveAbilities();
-    // === POWER-UPS ===
-    G.powerupSpawnTimer -= dt;
-    if(G.powerupSpawnTimer <= 0 && G.powerups.length < 3 && !G.goalCelebrating){
-      spawnPowerup();
-      G.powerupSpawnTimer = 10 + Math.random() * 8;
-    }
-    for(const pu of G.powerups) pu.life -= dt;
-    checkPowerupPickups();
-    updatePowerupHud();
-    // === COMBOS ===
-    updateCombos(dt);
-    // Record replay frame (for goal replay)
-    recordReplayFrame();
-    // Track possession time
-    if(G.ball.owner && !G.goalCelebrating){
-      if(G.ball.owner.team === 'blue') G.stats.possBlueTime += dt; else G.stats.possRedTime += dt;
-    }
-    updatePossessionBar();
-    if(G.cameraShake > 0) G.cameraShake *= 0.9; if(G.cameraShake < 0.1) G.cameraShake = 0;
-    updateCooldownUI(); updateShotChargeUI(); updatePosIndicator(); updateBallOwnerTag();
-    if(!animate._mmFrame) animate._mmFrame = 0; if(++animate._mmFrame % 3 === 0) drawMinimap();
-    if(G.goalCelebrating){ G.goalTimer -= dt; if(G.goalTimer <= 0){ G.goalCelebrating = false; resetPositions(); } }
-    if(G.recentSave.timer > 0){ G.recentSave.timer -= dt; if(G.recentSave.timer <= 0) G.recentSave.team = null; }
   }
   ctx.save();
   // Apply game scale (zoom out on mobile)
@@ -3594,21 +4016,172 @@ function animate(now){
 }
 
 
-function startGame(heroKey){
-  SFX.init(); SFX.resume();
-  session.start({ selectedHero: heroKey });
-  // Clear powerup HUD
-  clearPowerupHud();
-  resizeCanvas(); G.ball = new Ball(); createPlayers(); resetTactics();
-  camX = FIELD.x + FIELD.w/2 - W/2; camY = FIELD.y + FIELD.h/2 - H/2;
-  document.getElementById('startScreen').style.display = 'none'; if(window.stopStartBg) window.stopStartBg(); document.getElementById('hud').style.display = 'flex'; document.getElementById('heroPanel').style.display = 'block'; document.getElementById('controlsPanel').style.display = G.isMobile ? 'none' : 'block'; document.getElementById('minimap').style.display = G.isMobile ? 'none' : 'block'; document.getElementById('posIndicator').style.display = 'block'; document.getElementById('soundToggle').style.display = 'flex'; document.getElementById('possessionBar').classList.add('show');
-  if(G.isMobile){ document.getElementById('mobileControls').classList.add('active'); document.getElementById('btnMobilePause').classList.add('active'); } else { document.getElementById('mobileControls').classList.remove('active'); document.getElementById('btnMobilePause').classList.remove('active'); }
+function showGameUI(){
+  document.getElementById('startScreen').style.display = 'none';
+  if(window.stopStartBg) window.stopStartBg();
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('heroPanel').style.display = 'block';
+  document.getElementById('controlsPanel').style.display = G.isMobile ? 'none' : 'block';
+  document.getElementById('minimap').style.display = G.isMobile ? 'none' : 'block';
+  document.getElementById('posIndicator').style.display = 'block';
+  document.getElementById('soundToggle').style.display = 'flex';
+  document.getElementById('possessionBar').classList.add('show');
+  if(G.isMobile){
+    document.getElementById('mobileControls').classList.add('active');
+    document.getElementById('btnMobilePause').classList.add('active');
+  } else {
+    document.getElementById('mobileControls').classList.remove('active');
+    document.getElementById('btnMobilePause').classList.remove('active');
+  }
   document.getElementById('statsPanel').classList.remove('show');
   document.getElementById('pauseScreen').classList.remove('show');
-  updateScoreUI(); updateTimerUI(); updateHeroPanel(getActivePlayer()); updateShotChargeUI(); G.gameRunning = true; G.lastTime = performance.now(); animate(G.lastTime);
+  const pauseTitle = document.querySelector('#pauseScreen .pause-title');
+  if(pauseTitle) pauseTitle.textContent = 'PAUSA';
+}
+function startGame(heroKey, options){
+  const startOptions = options || {};
+  SFX.init(); SFX.resume();
+  session.start({ selectedHero: heroKey });
+  G.netMode = startOptions.netMode || 'local';
+  G.localPlayerId = null;
+  G.remoteGuestId = null;
+  G.remoteGuestHero = startOptions.guestHero || null;
+  netHostLeft = false;
+  netLatestSnapshot = null;
+  netRemoteActions = [];
+  netRemoteInput = { up:false, down:false, left:false, right:false };
+  netInputTimer = 0;
+  netSnapshotTimer = 0;
+  clearPowerupHud();
+  resizeCanvas(); G.ball = new Ball(); createPlayers(); resetTactics();
+  if(G.netMode === 'host'){
+    const hostPlayer = getActivePlayer();
+    G.localPlayerId = hostPlayer ? hostPlayer.id : null;
+  }
+  camX = FIELD.x + FIELD.w/2 - W/2; camY = FIELD.y + FIELD.h/2 - H/2;
+  showGameUI();
+  updateScoreUI(); updateTimerUI(); updateHeroPanel(getActivePlayer()); updateShotChargeUI();
+  G.gameRunning = true; G.lastTime = performance.now(); animate(G.lastTime);
   SFX.whistle(true); SFX.startCrowd(); SFX.cheer(0.22);
 }
+function startGuestMatch(payload){
+  const data = payload || {};
+  const settings = data.settings || {};
+  const roster = data.roster || [];
+  netRoom = data.room || netRoom;
+  netRole = 'guest';
+  netMatchReady = true;
+  netHostLeft = false;
+  netLatestSnapshot = null;
+  netRemoteActions = [];
+  netInputTimer = 0;
+  netSnapshotTimer = 0;
+  SFX.init(); SFX.resume();
+  session.start({
+    selectedHero: settings.guestHero,
+    selectedMatch: settings.matchId,
+    difficulty: settings.difficulty,
+    matchDuration: settings.duration
+  });
+  G.netMode = 'guest';
+  G.localPlayerId = data.localPlayerId || null;
+  G.remoteGuestId = null;
+  G.remoteGuestHero = null;
+  G.selectedMatch = settings.matchId || G.selectedMatch;
+  G.difficulty = settings.difficulty || G.difficulty;
+  G.matchDuration = settings.duration || G.matchDuration;
+  G.timeLeft = G.matchDuration;
+  G.gameRunning = true;
+  G.lastTime = performance.now();
+  G._cachedHuman = null;
+  clearPowerupHud();
+  resizeCanvas();
+  G.players = BLSnapshot.createPlayersFromRoster(Player, roster, G.localPlayerId);
+  G.ball = new Ball();
+  resetTactics();
+  camX = FIELD.x + FIELD.w/2 - W/2; camY = FIELD.y + FIELD.h/2 - H/2;
+  showGameUI();
+  updateScoreUI(); updateTimerUI(); updateHeroPanel(getActivePlayer()); updateShotChargeUI();
+  animate(G.lastTime);
+  SFX.whistle(true); SFX.startCrowd(); SFX.cheer(0.22);
+}
+function startNetworkMatch(payload){
+  const data = payload || {};
+  const settings = data.settings || {};
+  netRoom = data.room || netRoom;
+  netRole = 'host';
+  netMatchReady = false;
+  netInputTimer = 0;
+  netSnapshotTimer = 0;
+  netRemoteInput = { up:false, down:false, left:false, right:false };
+  netRemoteActions = [];
+  G.selectedMatch = settings.matchId || G.selectedMatch;
+  G.difficulty = settings.difficulty || G.difficulty;
+  G.matchDuration = settings.duration || G.matchDuration;
+  startGame(settings.hostHero, { netMode: 'host', guestHero: settings.guestHero });
+  const hostPlayer = getActivePlayer();
+  const guestPlayer = G.players.find(p => p.isRemoteHuman);
+  if(netRoom){
+    netRoom.startMatch({
+      settings,
+      roster: BLSnapshot.buildRoster(G.players),
+      hostPlayerId: hostPlayer ? hostPlayer.id : null,
+      guestPlayerId: guestPlayer ? guestPlayer.id : null,
+      localPlayerId: guestPlayer ? guestPlayer.id : null
+    });
+  }
+  netMatchReady = true;
+}
+function handleRoomEvent(event){
+  if(!event) return;
+  if(event.type === 'input' && G.netMode === 'host'){
+    // Pause is handled immediately: the host's own animation loop is stopped
+    // while paused, so queuing it would leave the guest unable to resume.
+    if(Array.isArray(event.actions) && event.actions.includes('pause')){
+      togglePause();
+      return;
+    }
+    if(event.input) netRemoteInput = event.input;
+    if(Array.isArray(event.actions) && event.actions.length) netRemoteActions.push(...event.actions);
+    return;
+  }
+  if(event.type === 'snapshot' && G.netMode === 'guest'){
+    netLatestSnapshot = event.snapshot;
+    return;
+  }
+  if(event.type === 'pause' && G.netMode === 'guest'){
+    applyNetworkPause(event.paused);
+    return;
+  }
+  if(event.type === 'end' && G.netMode === 'guest'){
+    G.scoreBlue = event.scoreBlue || 0;
+    G.scoreRed = event.scoreRed || 0;
+    if(event.stats) G.stats = event.stats;
+    endGame();
+    return;
+  }
+  if(event.type === 'leave'){
+    if(G.netMode === 'host'){
+      const guestPlayer = G.players.find(p => p.id === G.remoteGuestId);
+      if(guestPlayer){ guestPlayer.isRemoteHuman = false; guestPlayer.isHuman = false; }
+      G.remoteGuestId = null;
+      G.netMode = 'local';
+      netRoom = null;
+      showAbilityNotif('INVITADO DESCONECTADO', '#ff2e63');
+    } else if(G.netMode === 'guest'){
+      netHostLeft = true;
+      const pauseTitle = document.querySelector('#pauseScreen .pause-title');
+      if(pauseTitle) pauseTitle.textContent = 'DESCONECTADO';
+      showAbilityNotif('ANFITRIÓN DESCONECTADO', '#ff2e63');
+      applyNetworkPause(true);
+    }
+    return;
+  }
+}
 function endGame(){
+  if(G.netMode === 'host' && netRoom){
+    netRoom.sendEnd({ scoreBlue: G.scoreBlue, scoreRed: G.scoreRed, stats: G.stats });
+  }
   const activePlayer = getActivePlayer(); if(activePlayer) activePlayer.cancelShotCharge();
   session.end(); const es = document.getElementById('endScreen'); const et = document.getElementById('endTitle'); const esc = document.getElementById('endScore');
   if(G.scoreBlue > G.scoreRed){ et.textContent = '¡VICTORIA!'; et.style.color = '#00d9ff'; et.style.textShadow = '0 0 30px #00d9ff'; esc.style.color = '#00d9ff'; SFX.cheer(0.4); }
@@ -3800,15 +4373,48 @@ const input = window.BLInput.createInput({
   getActivePlayer,
   dist,
   HEROES,
+  RIVALS,
   canvas,
+  isRemote: () => G.netMode === 'guest',
   actions: {
     togglePause,
     switchHero,
     grantAwakening,
-    toggleDebugAI
+    toggleDebugAI,
+    remote: inputRemoteAction
   }
 });
 input.setup();
+
+// === PRIVATE 1v1 LOBBY ===
+lobby = window.BLLobby.createLobby({
+  G,
+  MATCHES,
+  window,
+  document,
+  createTransport: window.BLNetTransport.createTransport,
+  createRoomSession: window.BLRoom.createRoomSession,
+  generateRoomCode: window.BLNetTransport.generateRoomCode,
+  normalizeRoomCode: window.BLNetTransport.normalizeRoomCode,
+  onHostStart: startNetworkMatch,
+  onGuestStart: startGuestMatch,
+  onRoomEvent: handleRoomEvent,
+  audio: SFX
+});
+const multiplayerBtn = document.getElementById('multiplayerBtn');
+if(multiplayerBtn) multiplayerBtn.addEventListener('click', () => { SFX.ui(); lobby.open(); });
+
+// If the browser throttles requestAnimationFrame because the host switched
+// tabs, keep the authoritative simulation and network snapshots alive.
+setInterval(() => {
+  if(!G.gameRunning || G.paused) return;
+  const now = performance.now();
+  const hidden = document.hidden || document.visibilityState === 'hidden';
+  // Hidden tabs pause requestAnimationFrame. The host still needs to simulate
+  // and send snapshots, so tick at ~20 Hz. When visible, only recover from a
+  // genuinely stalled frame loop to avoid double-stepping at low frame rates.
+  if(hidden ? now - G.lastTime > 40 : now - G.lastTime > 250) animate(now);
+}, 50);
 
 </script>
 </body>
