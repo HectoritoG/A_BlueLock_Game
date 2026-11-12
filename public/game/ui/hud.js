@@ -21,13 +21,20 @@
     const camera = runtime.camera || { x: 0, y: 0 };
     const doc = runtime.document || (typeof document !== 'undefined' ? document : null);
     const now = runtime.now || (() => performance.now());
+    // The HUD is refreshed every frame. Writing the same value again forces
+    // the browser to recalculate styles, which shows up as stutter on weak
+    // devices, so the last written values are cached.
+    const hudCache = { score: null, timer: null, hero: null };
 
     function updateScoreUI() {
       if (!doc) return;
       const blue = doc.getElementById('scoreBlue');
       const red = doc.getElementById('scoreRed');
-      if (blue) blue.textContent = G.scoreBlue;
-      if (red) red.textContent = G.scoreRed;
+      if (hudCache.score !== G.scoreBlue + ':' + G.scoreRed) {
+        hudCache.score = G.scoreBlue + ':' + G.scoreRed;
+        if (blue) blue.textContent = G.scoreBlue;
+        if (red) red.textContent = G.scoreRed;
+      }
     }
 
     function updateTimerUI() {
@@ -36,7 +43,11 @@
       if (!t) return;
       const m = Math.floor(G.timeLeft / 60);
       const s = Math.floor(G.timeLeft % 60);
-      t.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      const label = `${m}:${s.toString().padStart(2, '0')}`;
+      if (hudCache.timer !== label) {
+        hudCache.timer = label;
+        t.textContent = label;
+      }
       t.classList.toggle('urgent', G.timeLeft < 30);
     }
 
@@ -44,6 +55,8 @@
       if (!doc || !p) return;
       const h = p.heroKey ? HEROES[p.heroKey] : (p.rivalKey ? RIVALS[p.rivalKey] : null);
       if (!h) return;
+      if (hudCache.hero === h.name) return;
+      hudCache.hero = h.name;
       const name = doc.getElementById('hpName');
       const passive = doc.getElementById('hpPassive');
       const active = doc.getElementById('hpActive');

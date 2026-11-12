@@ -7,15 +7,18 @@ function closeTo(actual, expected, epsilon = 1e-6) {
 }
 
 function snapshot(hostTime, seq, playerX, ballX, extra) {
+  // The samples move 100 px (players) and 200 px (ball) every 100 ms, so the
+  // velocities stay consistent with the positions (the game stores them per
+  // simulation frame: px / (seconds * 60)).
   return Object.assign({
     hostTime,
     seq,
     timeLeft: 180 - hostTime / 1000,
     players: [
-      { id: 'p1', x: playerX, y: 10, vx: 20, vy: 0, facingAngle: 0, hasBall: false },
-      { id: 'p2', x: playerX + 5, y: 20, vx: 0, vy: 0, facingAngle: 1, hasBall: true }
+      { id: 'p1', x: playerX, y: 10, vx: 100 / 6, vy: 0, facingAngle: 0, hasBall: false },
+      { id: 'p2', x: playerX + 5, y: 20, vx: 100 / 6, vy: 0, facingAngle: 1, hasBall: true }
     ],
-    ball: { x: ballX, y: 30, z: 0, vx: 100, vy: 0, vz: 0, rotation: 0, dribbleOffset: { x: 0, y: 0 } }
+    ball: { x: ballX, y: 30, z: 0, vx: 200 / 6, vy: 0, vz: 0, rotation: 0, dribbleOffset: { x: 0, y: 0 } }
   }, extra || {});
 }
 
@@ -30,6 +33,28 @@ test('blendSnapshots interpolates players, ball and time', () => {
   closeTo(blended.timeLeft, 179.975);
   assert.equal(blended.players[0].hasBall, false);
   assert.equal(blended.players[1].hasBall, true);
+});
+
+test('blendSnapshots follows the curve of the sampled velocities', () => {
+  // The player accelerates between the two samples, so the rendered position
+  // must bend with the velocity instead of following a straight line.
+  const older = snapshot(0, 1, 0, 0);
+  const newer = snapshot(100, 2, 100, 200);
+  older.players[0].vx = 0;
+  newer.players[0].vx = 100 / 6;
+  const blended = interpolation.blendSnapshots(older, newer, 0.5);
+  // The Hermite curve sags while the player speeds up at the end of the sample.
+  assert.ok(blended.players[0].x < 50, 'expected a curved path, got ' + blended.players[0].x);
+  assert.ok(blended.players[0].x > 25, 'the curve must not collapse to the start');
+});
+
+test('blendSnapshots never shoots outside the segment on a collision', () => {
+  const older = snapshot(0, 1, 0, 0);
+  const newer = snapshot(100, 2, 100, 200);
+  older.players[0].vx = 200; // teleport-like velocity
+  newer.players[0].vx = -200;
+  const blended = interpolation.blendSnapshots(older, newer, 0.5);
+  assert.ok(blended.players[0].x >= 0 && blended.players[0].x <= 100);
 });
 
 test('blendSnapshots snaps across a large teleport instead of sliding', () => {

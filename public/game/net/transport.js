@@ -37,9 +37,356 @@
 
   function createTransport(runtime) {
     const opts = runtime || {};
-    const mode = opts.mode === 'broadcast' ? 'broadcast' : 'peer';
+    const mode = opts.mode || 'peer';
     if (mode === 'broadcast') return createBroadcastTransport(opts);
+    if (mode === 'relay') return createRelayTransport(opts);
+    if (mode === 'auto') return createAutoTransport(opts);
     return createPeerTransport(opts);
+  }
+
+  // Fallback relay over a public MQTT broker (MQTT 3.1.1 over TLS WebSocket).
+  // It only needs one outbound HTTPS/WSS connection per player, so it works
+  // behind symmetric NATs and strict firewalls where a direct WebRTC data
+  // channel cannot be established.
+  function createRelayTransport(runtime) {
+    const opts = runtime || {};
+    const win = opts.window || (typeof window !== 'undefined' ? window : null);
+    const createMqttClient = opts.createMqttClient ||
+      (win && win.BLMqtt && win.BLMqtt.createMqttClient) ||
+      (typeof BLMqtt !== 'undefined' && BLMqtt.createMqttClient);
+    const role = opts.role === 'host' ? 'host' : 'guest';
+    const roomCode = normalizeRoomCode(opts.roomCode);
+    const base = 'bluelock/v1/' + roomCode;
+    const ownTopic = base + '/' + role;
+    const peerTopic = base + '/' + (role === 'host' ? 'guest' : 'host');
+    const leavePayload = JSON.stringify({ v: 1, type: 'leave', from: role });
+    let handlers = {};
+    let client = null;
+    let closed = false;
+    let connected = false;
+    let lastStatus = { status: 'opening', detail: null };
+    const queue = [];
+
+    function emitStatus(status, detail) {
+      lastStatus = { status, detail: detail || null };
+      if (handlers.onStatus) handlers.onStatus(status, detail || null);
+    }
+
+    function flush() {
+      while (queue.length && connected && client) {
+        const message = queue.shift();
+        try {
+          const text = JSON.stringify(message);
+          // The hello is retained so a peer that joins later still finds us.
+          client.publish(ownTopic, text, message && message.type === 'hello');
+        } catch (error) {
+          emitStatus('error', { code: 'relay-publish-failed', error: error });
+          break;
+        }
+      }
+    }
+
+    function handlePayload(text) {
+      let message = null;
+      try { message = JSON.parse(text); } catch (error) { return; }
+      if (!message || typeof message !== 'object') return;
+      if (handlers.onMessage) handlers.onMessage(message);
+    }
+
+    function start() {
+      if (closed || client) return;
+      if (typeof createMqttClient !== 'function') {
+        emitStatus('error', { code: 'mqtt-missing' });
+        return;
+      }
+      client = createMqttClient({
+        window: win,
+        clientId: 'bl-' + role + '-' + roomCode.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8),
+        willTopic: ownTopic,
+        willPayload: leavePayload,
+        willRetain: false,
+        keepAliveMs: 45000,
+        onStatus: function(status, detail) {
+          if (status === 'open') {
+            connected = true;
+            emitStatus('connected', detail);
+            flush();
+            if (handlers.onOpen) handlers.onOpen();
+            return;
+          }
+          if (status === 'error') {
+            emitStatus('error', detail);
+            if (handlers.onError) handlers.onError(detail);
+            return;
+          }
+          if (status === 'disconnected') {
+            connected = false;
+            emitStatus('disconnected', detail);
+            return;
+          }
+          if (status === 'closed') {
+            connected = false;
+            emitStatus('closed');
+            if (!closed && handlers.onClose) handlers.onClose();
+            return;
+          }
+          emitStatus(status, detail);
+        },
+        onMessage: function(topic, text) {
+          if (topic !== peerTopic) return;
+          handlePayload(text);
+        },
+        onError: function(error) {
+          if (handlers.onError) handlers.onError(error);
+        }
+      });
+      client.subscribe(peerTopic);
+      client.connect();
+    }
+
+    function send(message) {
+      if (closed) return false;
+      if (!connected || !client) {
+        queue.push(message);
+        return false;
+      }
+      try {
+        const text = JSON.stringify(message);
+        client.publish(ownTopic, text, message && message.type === 'hello');
+        return true;
+      } catch (error) {
+        emitStatus('error', { code: 'relay-send-failed', error: error });
+        return false;
+      }
+    }
+
+    function close() {
+      if (closed) return;
+      closed = true;
+      connected = false;
+      try {
+        // Clear the retained hello so a future guest does not find a ghost.
+        if (client && client.isConnected()) client.publish(ownTopic, '', true);
+      } catch (error) {}
+      try { if (client) client.close(); } catch (error) {}
+      client = null;
+      emitStatus('closed');
+      if (handlers.onClose) handlers.onClose();
+    }
+
+    function setHandlers(next) {
+      handlers = next || {};
+      if (handlers.onStatus) handlers.onStatus(lastStatus.status, lastStatus.detail);
+      if (connected && handlers.onOpen) handlers.onOpen();
+      else start();
+    }
+
+    return {
+      mode: 'relay',
+      role: role,
+      roomCode: roomCode,
+      ownTopic: ownTopic,
+      peerTopic: peerTopic,
+      send: send,
+      close: close,
+      setHandlers: setHandlers,
+      isConnected: function() { return connected && !closed; },
+      getStatus: function() { return lastStatus.status; }
+    };
+  }
+
+  // Hybrid transport: tries the direct WebRTC channel first and transparently
+  // falls back to the relay when the network blocks the peer connection.
+  function createAutoTransport(runtime) {
+    const opts = runtime || {};
+    const role = opts.role === 'host' ? 'host' : 'guest';
+    const roomCode = normalizeRoomCode(opts.roomCode);
+    const fallbackDelayMs = Math.max(1000, Number(opts.fallbackDelayMs) || 12000);
+    let handlers = {};
+    let closed = false;
+    let active = null;
+    let opened = false;
+    let peer = null;
+    let relay = null;
+    let fallbackTimer = null;
+    const queue = [];
+    const lastStatus = { status: 'opening', detail: null };
+
+    function emitStatus(status, detail) {
+      lastStatus.status = status;
+      lastStatus.detail = detail || null;
+      if (handlers.onStatus) handlers.onStatus(status, detail || null);
+    }
+
+    function activeChannel() {
+      if (active === 'peer') return peer;
+      if (active === 'relay') return relay;
+      return null;
+    }
+
+    function flush() {
+      const channel = activeChannel();
+      if (!channel) return;
+      while (queue.length) {
+        const message = queue.shift();
+        try { channel.send(message); } catch (error) { queue.push(message); break; }
+      }
+    }
+
+    function lock(channelName) {
+      if (active || closed) return;
+      active = channelName;
+      if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
+      flush();
+      if (!opened) {
+        opened = true;
+        emitStatus('connected', { via: channelName });
+        if (handlers.onOpen) handlers.onOpen();
+      }
+    }
+
+    function handleChannelMessage(channel, message) {
+      if (!message || message.from === role) return;
+      // Both sides lock onto the channel that carries the first hello, so the
+      // host and the guest always end up on the same path.
+      if (!active && message.type === 'hello') lock(channel);
+      if (active !== channel) return;
+      if (handlers.onMessage) handlers.onMessage(message);
+    }
+
+    function ensureRelay() {
+      if (closed || relay) return;
+      relay = createRelayTransport({
+        role: role,
+        roomCode: roomCode,
+        window: opts.window,
+        createMqttClient: opts.createMqttClient,
+        brokers: opts.brokers
+      });
+      relay.setHandlers({
+        onOpen: function() {
+          if (role === 'guest') lock('relay');
+        },
+        onMessage: function(message) { handleChannelMessage('relay', message); },
+        onStatus: function(status, detail) {
+          if (status === 'connected') {
+            // The relay reached the broker; the peer may still be missing.
+            if (role === 'guest') lock('relay');
+            else if (!active) emitStatus('relay-ready', detail);
+            return;
+          }
+          if (status === 'error') {
+            if (!active) {
+              emitStatus('error', detail);
+              if (handlers.onError) handlers.onError(detail);
+            }
+            return;
+          }
+          if (status === 'closed') {
+            if (active === 'relay') {
+              emitStatus('closed');
+              if (handlers.onClose) handlers.onClose();
+            }
+            return;
+          }
+          if (!active) emitStatus(status, detail);
+        },
+        onClose: function() {
+          if (active === 'relay') {
+            emitStatus('closed');
+            if (handlers.onClose) handlers.onClose();
+          }
+        },
+        onError: function(error) {
+          if (!active && handlers.onError) handlers.onError(error);
+        }
+      });
+    }
+
+    peer = createPeerTransport({
+      role: role,
+      roomCode: roomCode,
+      window: opts.window,
+      Peer: opts.Peer
+    });
+    peer.setHandlers({
+      onOpen: function() {
+        // The guest trusts the channel it opened; the host waits for the
+        // hello so both sides pick the same path.
+        if (role === 'guest') lock('peer');
+      },
+      onMessage: function(message) { handleChannelMessage('peer', message); },
+      onStatus: function(status, detail) {
+        if (status === 'error') {
+          // The direct path failed: the relay takes over when allowed.
+          if (role === 'guest') ensureRelay();
+          return;
+        }
+        if (status === 'closed' && active === 'peer') {
+          if (role === 'guest') ensureRelay();
+          return;
+        }
+        if (!active) emitStatus(status, detail);
+      },
+      onClose: function() {
+        if (active === 'peer' && role === 'guest') ensureRelay();
+      },
+      onError: function(error) {
+        if (role === 'guest') ensureRelay();
+        else if (!active && handlers.onError) handlers.onError(error);
+      }
+    });
+
+    if (role === 'guest') {
+      // If the peer connection is not ready in time, use the relay instead.
+      fallbackTimer = setTimeout(function() {
+        if (!active) ensureRelay();
+      }, fallbackDelayMs);
+    } else {
+      // The host listens on the relay from the start so a guest that cannot
+      // do P2P still finds the room.
+      ensureRelay();
+    }
+
+    function send(message) {
+      if (closed) return false;
+      const channel = activeChannel();
+      if (!channel) {
+        queue.push(message);
+        return false;
+      }
+      try { return channel.send(message); } catch (error) { return false; }
+    }
+
+    function close() {
+      if (closed) return;
+      closed = true;
+      if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
+      try { if (peer) peer.close(); } catch (error) {}
+      try { if (relay) relay.close(); } catch (error) {}
+      peer = null;
+      relay = null;
+      emitStatus('closed');
+      if (handlers.onClose) handlers.onClose();
+    }
+
+    function setHandlers(next) {
+      handlers = next || {};
+      if (handlers.onStatus) handlers.onStatus(lastStatus.status, lastStatus.detail);
+      if (opened && handlers.onOpen) handlers.onOpen();
+    }
+
+    return {
+      mode: 'auto',
+      role: role,
+      roomCode: roomCode,
+      send: send,
+      close: close,
+      setHandlers: setHandlers,
+      isConnected: function() { return !!active && !closed; },
+      getStatus: function() { return lastStatus.status; },
+      getActiveChannel: function() { return active; }
+    };
   }
 
   function createPeerTransport(runtime) {
@@ -408,6 +755,8 @@
     normalizeRoomCode,
     createTransport,
     createPeerTransport,
-    createBroadcastTransport
+    createBroadcastTransport,
+    createRelayTransport,
+    createAutoTransport
   };
 });

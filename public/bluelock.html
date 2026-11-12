@@ -233,6 +233,7 @@
   .room-status[data-tone="warn"]{color:#ffb347;}
   .room-status[data-tone="error"]{color:#ff5a5a;}
   .room-hint{font-size:10px;color:#678;text-align:center;line-height:1.5;letter-spacing:.5px;}
+  .room-build{font-size:9px;color:#456;text-align:right;letter-spacing:1px;margin:-6px 2px 4px;}
 
   #pauseScreen{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
   #pauseScreen.show{display:flex;animation:pauseFade .25s ease-out;}
@@ -582,6 +583,7 @@
       <button id="roomHostTab" class="room-tab active" data-mode="host">Crear sala</button>
       <button id="roomJoinTab" class="room-tab" data-mode="join">Unirse</button>
     </div>
+    <div class="room-build">build <span id="roomBuildLabel">20261112b</span></div>
 
     <div id="roomHostPanel" class="room-panel">
       <div class="room-row">
@@ -594,7 +596,9 @@
       </div>
       <label class="room-field">Conexión
         <select id="roomHostTransport">
-          <option value="peer">P2P · amigos en otros equipos</option>
+          <option value="auto">Auto · P2P con relé de respaldo</option>
+          <option value="peer">Solo P2P · WebRTC directo</option>
+          <option value="relay">Solo relé · si el P2P está bloqueado</option>
           <option value="broadcast">Misma PC · prueba en dos pestañas</option>
         </select>
       </label>
@@ -610,7 +614,7 @@
       <div class="room-actions">
         <button id="roomStartBtn" class="room-btn" disabled>Iniciar partido</button>
       </div>
-      <div class="room-hint">El invitado debe usar el mismo modo de conexión. En P2P el código conecta directamente con su navegador.</div>
+      <div class="room-hint">El invitado debe usar el mismo modo de conexión. En "Auto" se intenta P2P y, si la red lo bloquea, se cae a un relé automáticamente.</div>
     </div>
 
     <div id="roomJoinPanel" class="room-panel hidden">
@@ -627,7 +631,9 @@
       </label>
       <label class="room-field">Conexión
         <select id="roomJoinTransport">
-          <option value="peer">P2P · amigos en otros equipos</option>
+          <option value="auto">Auto · P2P con relé de respaldo</option>
+          <option value="peer">Solo P2P · WebRTC directo</option>
+          <option value="relay">Solo relé · si el P2P está bloqueado</option>
           <option value="broadcast">Misma PC · prueba en dos pestañas</option>
         </select>
       </label>
@@ -639,7 +645,7 @@
       <div class="room-actions">
         <button id="roomReadyBtn" class="room-btn" disabled>Listo</button>
       </div>
-      <div class="room-hint">El anfitrión controla el partido. Tú controlas un héroe rival y tus acciones viajan por P2P.</div>
+      <div class="room-hint">El anfitrión controla el partido. Tú controlas un héroe rival y tus acciones viajan por la red.</div>
     </div>
   </div>
 </div>
@@ -772,24 +778,25 @@
 </div>
 <div id="btnMobilePause">⏸</div>
 
-<script src="./game/core/constants.js"></script>
-<script src="./game/core/math.js"></script>
-<script src="./game/core/rng.js"></script>
-<script src="./game/core/match-state.js"></script>
-<script src="./game/entities.js"></script>
-<script src="./game/render/entities.js"></script>
-<script src="./game/ai.js"></script>
-<script src="./game/audio/sfx.js"></script>
-<script src="./game/session/local-session.js"></script>
-<script src="./game/ui/hud.js"></script>
-<script src="./game/input/input.js"></script>
-<script src="./game/vendor/peerjs.min.js"></script>
-<script src="./game/net/protocol.js"></script>
-<script src="./game/net/transport.js"></script>
-<script src="./game/net/room.js"></script>
-<script src="./game/net/snapshot.js"></script>
-<script src="./game/net/interpolation.js"></script>
-<script src="./game/ui/lobby.js"></script>
+<script src="./game/core/constants.js?v=20261112b"></script>
+<script src="./game/core/math.js?v=20261112b"></script>
+<script src="./game/core/rng.js?v=20261112b"></script>
+<script src="./game/core/match-state.js?v=20261112b"></script>
+<script src="./game/entities.js?v=20261112b"></script>
+<script src="./game/render/entities.js?v=20261112b"></script>
+<script src="./game/ai.js?v=20261112b"></script>
+<script src="./game/audio/sfx.js?v=20261112b"></script>
+<script src="./game/session/local-session.js?v=20261112b"></script>
+<script src="./game/ui/hud.js?v=20261112b"></script>
+<script src="./game/input/input.js?v=20261112b"></script>
+<script src="./game/vendor/peerjs.min.js?v=20261112b"></script>
+<script src="./game/net/protocol.js?v=20261112b"></script>
+<script src="./game/net/mqtt.js?v=20261112b"></script>
+<script src="./game/net/transport.js?v=20261112b"></script>
+<script src="./game/net/room.js?v=20261112b"></script>
+<script src="./game/net/snapshot.js?v=20261112b"></script>
+<script src="./game/net/interpolation.js?v=20261112b"></script>
+<script src="./game/ui/lobby.js?v=20261112b"></script>
 <script>
 // === SHARED CORE (classic bridge until main.js is modularized) ===
 const {
@@ -1520,7 +1527,7 @@ let netRoom = null;
 let netRole = null;
 let netMatchReady = false;
 let netInputTimer = 0;
-let netSnapshotTimer = 0;
+let netSnapshotAt = 0;
 let netLatestSnapshot = null;
 let netRemoteInput = { up:false, down:false, left:false, right:false };
 let netRemoteActions = [];
@@ -3048,11 +3055,14 @@ function applyLatestSnapshot(now){
 }
 function sendHostSnapshot(dt){
   if(G.netMode !== 'host' || !netRoom || !netMatchReady) return;
-  netSnapshotTimer += dt;
-  if(netSnapshotTimer < NET_SNAPSHOT_INTERVAL) return;
-  netSnapshotTimer = 0;
+  // The cadence follows the wall clock instead of the frame delta, so the
+  // guest always receives samples at a steady rate even when the host drops
+  // frames. A steady cadence keeps the interpolation free of stutters.
+  const now = performance.now();
+  if(now - netSnapshotAt < NET_SNAPSHOT_INTERVAL * 1000) return;
+  netSnapshotAt = now;
   const snapshot = BLSnapshot.serializeMatch(G);
-  snapshot.hostTime = performance.now();
+  snapshot.hostTime = now;
   snapshot.seq = (G.netSnapshotSeq = (G.netSnapshotSeq || 0) + 1);
   netRoom.sendSnapshot(BLSnapshot.packSnapshot(snapshot));
 }
@@ -3878,6 +3888,16 @@ function createPlayers(){
   }
 }
 
+function processHostPauseActions(){
+  // The guest can ask the host to pause or resume. The action is handled here
+  // so it also works while the host tab is in the background and the browser
+  // pauses requestAnimationFrame.
+  if(G.netMode !== 'host' || !netRemoteActions.length) return false;
+  const actions = netRemoteActions.splice(0);
+  if(actions.includes('pause')){ togglePause(); return true; }
+  return false;
+}
+
 function animate(now){
   // Keep exactly one requestAnimationFrame chain alive. A slow watchdog below
   // can call animate() when the tab is hidden and the browser pauses rAF, which
@@ -3892,10 +3912,7 @@ function animate(now){
     if(G.paused){
       // A guest can still ask to resume while the host is paused. Only pause
       // actions are honoured here; any stale movement/action input is dropped.
-      if(G.netMode === 'host' && netRemoteActions.length){
-        const actions = netRemoteActions.splice(0);
-        if(actions.includes('pause')) togglePause();
-      }
+      processHostPauseActions();
       ctx.save();
       if(GAME_SCALE !== 1.0){
         ctx.scale(GAME_SCALE, GAME_SCALE);
@@ -4109,7 +4126,7 @@ function startGame(heroKey, options){
   netRemoteActions = [];
   netRemoteInput = { up:false, down:false, left:false, right:false };
   netInputTimer = 0;
-  netSnapshotTimer = 0;
+  netSnapshotAt = 0;
   clearPowerupHud();
   resizeCanvas(); G.ball = new Ball(); createPlayers(); resetTactics();
   if(G.netMode === 'host'){
@@ -4135,7 +4152,7 @@ function startGuestMatch(payload){
   G.netSnapshotSeq = 0;
   netRemoteActions = [];
   netInputTimer = 0;
-  netSnapshotTimer = 0;
+  netSnapshotAt = 0;
   SFX.init(); SFX.resume();
   session.start({
     selectedHero: settings.guestHero,
@@ -4172,7 +4189,7 @@ function startNetworkMatch(payload){
   netRole = 'host';
   netMatchReady = false;
   netInputTimer = 0;
-  netSnapshotTimer = 0;
+  netSnapshotAt = 0;
   netRemoteInput = { up:false, down:false, left:false, right:false };
   netRemoteActions = [];
   G.selectedMatch = settings.matchId || G.selectedMatch;
@@ -4475,7 +4492,10 @@ if(multiplayerBtn) multiplayerBtn.addEventListener('click', () => { SFX.ui(); lo
 // If the browser throttles requestAnimationFrame because the host switched
 // tabs, keep the authoritative simulation and network snapshots alive.
 setInterval(() => {
-  if(!G.gameRunning || G.paused) return;
+  if(!G.gameRunning) return;
+  // While paused the simulation is stopped, but a guest can still ask to
+  // resume, so the queued pause actions must keep being processed.
+  if(G.paused){ processHostPauseActions(); return; }
   const now = performance.now();
   const hidden = document.hidden || document.visibilityState === 'hidden';
   // Hidden tabs pause requestAnimationFrame. The host still needs to simulate

@@ -180,11 +180,19 @@
       setCode('');
       updatePlayers();
     }
-    function statusText(status) {
+    function statusText(status, detail) {
       if (status === 'opening') return 'Creando conexión...';
       if (status === 'waiting') return 'Sala creada. Esperando al invitado...';
-      if (status === 'connecting') return 'Conectando con la sala...';
-      if (status === 'connected') return 'Conectado.';
+      if (status === 'relay-ready') return 'Sala creada y relé listo. Esperando al invitado...';
+      if (status === 'connecting') {
+        const via = detail && detail.via === 'relay' ? ' (por relé)' : '';
+        return 'Conectando con la sala' + via + '...';
+      }
+      if (status === 'disconnected') return 'Conexión perdida. Reintentando...';
+      if (status === 'connected') {
+        const via = detail && detail.via === 'relay' ? ' por relé' : '';
+        return 'Conectado' + via + '.';
+      }
       if (status === 'closed') return 'Conexión cerrada.';
       if (status === 'error') return 'Error de conexión.';
       return status || '';
@@ -193,19 +201,21 @@
       if (!event) return;
       onRoomEvent(event);
       if (event.type === 'status') {
-        const text = statusText(event.status);
+        const text = statusText(event.status, event.detail);
         if (mode === 'host') setStatus('host', text, event.status === 'error' ? 'error' : '');
         else setStatus('join', text, event.status === 'error' ? 'error' : '');
         if (event.status === 'connected') {
-          if (mode === 'host') setStatus('host', 'Invitado conectado.', 'ok');
-          else setStatus('join', 'Conectado al anfitrión. Pulsa Listo.', 'ok');
+          const via = event.detail && event.detail.via === 'relay' ? ' por relé' : '';
+          if (mode === 'host') setStatus('host', 'Invitado conectado' + via + '.', 'ok');
+          else setStatus('join', 'Conectado al anfitrión' + via + '. Pulsa Listo.', 'ok');
         }
         return;
       }
       if (event.type === 'error') {
         const code = event.error && (event.error.code || event.error.type);
         const detail = code ? ' (' + code + ')' : '';
-        const message = 'No se pudo conectar' + detail + '. Revisa el código y usa el mismo modo en ambos equipos.';
+        const message = 'No se pudo conectar' + detail +
+          '. Si tu red bloquea el P2P, elegid "Solo relé" en los dos equipos y volved a intentarlo.';
         if (mode === 'host') setStatus('host', message, 'error');
         else setStatus('join', message, 'error');
         return;

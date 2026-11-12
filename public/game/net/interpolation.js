@@ -20,7 +20,9 @@
     maxSnapshots: 40,
     maxPlayerJump: 600,
     maxBallJump: 1200,
-    maxExtrapolationMs: 50
+    maxExtrapolationMs: 50,
+    // Fallback distance between two samples when the host does not stamp them.
+    defaultSpanSeconds: 0.066
   };
 
   function nowMs() {
@@ -60,7 +62,7 @@
     return out;
   }
 
-  function blendPosition(out, older, newer, t, maxJump) {
+  function blendPosition(out, older, newer, t, maxJump, span) {
     const oldX = numberOr(older.x, numberOr(newer.x, 0));
     const oldY = numberOr(older.y, numberOr(newer.y, 0));
     const newX = numberOr(newer.x, oldX);
@@ -72,26 +74,56 @@
     if (dx * dx + dy * dy > maxJump * maxJump) {
       out.x = newX;
       out.y = newY;
-    } else {
-      out.x = lerp(oldX, newX, t);
-      out.y = lerp(oldY, newY, t);
+      return;
     }
+    // Hermite interpolation uses the velocity of both samples, so the rendered
+    // path follows the real curve instead of the straight line between
+    // snapshots. That removes the visible kinks on curved runs.
+    const linearX = lerp(oldX, newX, t);
+    const linearY = lerp(oldY, newY, t);
+    out.x = smoothValue(oldX, numberOr(older.vx, 0), newX, numberOr(newer.vx, 0), t, span, linearX);
+    out.y = smoothValue(oldY, numberOr(older.vy, 0), newY, numberOr(newer.vy, 0), t, span, linearY);
   }
 
-  function blendPlayer(older, newer, t, maxJump) {
+  // Velocities in the snapshots are stored per simulation frame (the game
+  // moves entities with `x += vx * dt * 60`), so they become pixels per
+  // second before being used as Hermite tangents.
+  function smoothValue(p0, v0, p1, v1, t, span, linear) {
+    if (!span || span <= 0) return linear;
+    // Extrapolation (t > 1) keeps the plain line, the curve only makes sense
+    // between two real samples.
+    if (t > 1) return linear;
+    const amount = Math.max(0, t);
+    const t2 = amount * amount;
+    const t3 = t2 * amount;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + amount;
+    const h01 = -2 * t3 + 3 * t2;
+    const h11 = t3 - t2;
+    const value = h00 * p0 + h10 * span * v0 * 60 + h01 * p1 + h11 * span * v1 * 60;
+    // Never let the curve shoot far outside the segment: a collision would
+    // otherwise make the guest see players jump ahead of the ball.
+    const low = Math.min(p0, p1);
+    const high = Math.max(p0, p1);
+    const margin = Math.abs(p1 - p0) * 0.25 + 1;
+    if (value < low - margin || value > high + margin) return linear;
+    return value;
+  }
+
+  function blendPlayer(older, newer, t, maxJump, span) {
     const out = Object.assign({}, newer);
     if (!older) return out;
-    blendPosition(out, older, newer, t, maxJump);
+    blendPosition(out, older, newer, t, maxJump, span);
     out.vx = lerp(numberOr(older.vx, 0), numberOr(newer.vx, 0), t);
     out.vy = lerp(numberOr(older.vy, 0), numberOr(newer.vy, 0), t);
     out.facingAngle = lerpAngle(older.facingAngle, newer.facingAngle, t);
     return out;
   }
 
-  function blendBall(older, newer, t, maxJump) {
+  function blendBall(older, newer, t, maxJump, span) {
     if (!older || !newer) return newer ? Object.assign({}, newer) : newer;
     const out = Object.assign({}, newer);
-    blendPosition(out, older, newer, t, maxJump);
+    blendPosition(out, older, newer, t, maxJump, span);
     out.z = lerp(numberOr(older.z, 0), numberOr(newer.z, 0), t);
     out.vx = lerp(numberOr(older.vx, 0), numberOr(newer.vx, 0), t);
     out.vy = lerp(numberOr(older.vy, 0), numberOr(newer.vy, 0), t);
@@ -113,6 +145,13 @@
     const amount = Math.max(0, numberOr(t, 0));
     const out = Object.assign({}, newer);
     out.timeLeft = lerp(numberOr(older.timeLeft, 0), numberOr(newer.timeLeft, 0), amount);
+    // Time between the two samples, used for the Hermite tangents.
+    const olderTime = numberOr(older.hostTime, NaN);
+    const newerTime = numberOr(newer.hostTime, NaN);
+    let span = (Number.isFinite(olderTime) && Number.isFinite(newerTime))
+      ? (newerTime - olderTime) / 1000
+      : NaN;
+    if (!Number.isFinite(span) || span <= 0) span = opts.defaultSpanSeconds;
 
     const olderPlayers = new Map();
     (older.players || []).forEach(function(player) {
@@ -123,18 +162,18 @@
       const previous = player && player.id !== undefined && player.id !== null
         ? olderPlayers.get(player.id)
         : olderList[index];
-      return blendPlayer(previous, player, amount, opts.maxPlayerJump);
+      return blendPlayer(previous, player, amount, opts.maxPlayerJump, span);
     });
 
-    if (newer.ball) out.ball = blendBall(older.ball, newer.ball, amount, opts.maxBallJump);
+    if (newer.ball) out.ball = blendBall(older.ball, newer.ball, amount, opts.maxBallJump, span);
 
     if (older.karasuCrow && newer.karasuCrow) {
       out.karasuCrow = Object.assign({}, newer.karasuCrow);
-      blendPosition(out.karasuCrow, older.karasuCrow, newer.karasuCrow, amount, opts.maxBallJump);
+      blendPosition(out.karasuCrow, older.karasuCrow, newer.karasuCrow, amount, opts.maxBallJump, span);
     }
     if (older.nagiSkull && newer.nagiSkull) {
       out.nagiSkull = Object.assign({}, newer.nagiSkull);
-      blendPosition(out.nagiSkull, older.nagiSkull, newer.nagiSkull, amount, opts.maxBallJump);
+      blendPosition(out.nagiSkull, older.nagiSkull, newer.nagiSkull, amount, opts.maxBallJump, span);
       out.nagiSkull.z = lerp(
         numberOr(older.nagiSkull.z, 0),
         numberOr(newer.nagiSkull.z, 0),
