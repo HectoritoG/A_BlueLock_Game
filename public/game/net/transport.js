@@ -9,6 +9,14 @@
 
   const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const PRESENCE_TYPE = '__presence__';
+  // PeerJS JSON serialization rejects messages whose UTF-8 payload is >=
+  // 16,300 bytes (its chunkedMTU). Snapshots are larger than that, so the
+  // peer transport splits them into JSON-safe chunks and reassembles them.
+  const PEER_JSON_MAX_BYTES = 15000;
+  const CHUNK_ID = '__blc';
+  const CHUNK_INDEX = '__bli';
+  const CHUNK_TOTAL = '__blt';
+  const CHUNK_DATA = '__bld';
 
   function generateRoomCode(length, random) {
     const size = Math.max(4, Math.min(12, Number(length) || 6));
@@ -48,6 +56,98 @@
     let connected = false;
     let lastStatus = { status: 'opening', detail: null };
     const queue = [];
+    const chunkBuffers = new Map();
+    const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+    let chunkSequence = 0;
+
+    function byteLength(value) {
+      return textEncoder ? textEncoder.encode(value).byteLength : value.length;
+    }
+
+    function makeChunk(id, index, total, data) {
+      const chunk = {};
+      chunk[CHUNK_ID] = id;
+      chunk[CHUNK_INDEX] = index;
+      chunk[CHUNK_TOTAL] = total;
+      chunk[CHUNK_DATA] = data;
+      return chunk;
+    }
+
+    function splitMessage(message) {
+      const json = JSON.stringify(message);
+      if (json === undefined || byteLength(json) < PEER_JSON_MAX_BYTES) return null;
+      const id = role + '-' + Date.now().toString(36) + '-' + (++chunkSequence).toString(36);
+      const parts = [];
+      let offset = 0;
+      while (offset < json.length) {
+        let size = Math.min(6000, json.length - offset);
+        let data = json.slice(offset, offset + size);
+        let chunk = makeChunk(id, parts.length, 9999, data);
+        // JSON escaping (quotes, backslashes, unicode) can make the serialized
+        // wrapper larger than the raw chunk. Shrink until PeerJS accepts it.
+        while (size > 1 && byteLength(JSON.stringify(chunk)) >= PEER_JSON_MAX_BYTES) {
+          size = Math.max(1, Math.floor(size / 2));
+          data = json.slice(offset, offset + size);
+          chunk = makeChunk(id, parts.length, 9999, data);
+        }
+        if (byteLength(JSON.stringify(chunk)) >= PEER_JSON_MAX_BYTES) {
+          throw new Error('Message cannot be split into PeerJS chunks');
+        }
+        parts.push(data);
+        offset += size;
+      }
+      return parts.map(function(data, index) {
+        return makeChunk(id, index, parts.length, data);
+      });
+    }
+
+    function sendPayload(message) {
+      const chunks = splitMessage(message);
+      if (!chunks) {
+        conn.send(message);
+        return true;
+      }
+      for (const chunk of chunks) conn.send(chunk);
+      return true;
+    }
+
+    function handleIncomingData(data) {
+      if (!data || typeof data !== 'object' || data[CHUNK_ID] === undefined) {
+        if (handlers.onMessage) handlers.onMessage(data);
+        return;
+      }
+      const id = String(data[CHUNK_ID]);
+      const index = Number(data[CHUNK_INDEX]);
+      const total = Number(data[CHUNK_TOTAL]);
+      const chunk = data[CHUNK_DATA];
+      if (!Number.isInteger(index) || !Number.isInteger(total) ||
+          index < 0 || total <= 0 || index >= total || typeof chunk !== 'string') {
+        return;
+      }
+      let buffer = chunkBuffers.get(id);
+      if (!buffer) {
+        buffer = { total, parts: new Array(total), received: 0 };
+        chunkBuffers.set(id, buffer);
+      }
+      if (buffer.total !== total) {
+        chunkBuffers.delete(id);
+        return;
+      }
+      if (buffer.parts[index] === undefined) {
+        buffer.parts[index] = chunk;
+        buffer.received++;
+      }
+      if (buffer.received !== buffer.total) return;
+      chunkBuffers.delete(id);
+      let message;
+      try {
+        message = JSON.parse(buffer.parts.join(''));
+      } catch (error) {
+        emitStatus('error', { code: 'chunk-parse-failed', error });
+        return;
+      }
+      if (handlers.onMessage) handlers.onMessage(message);
+    }
 
     function emitStatus(status, detail) {
       lastStatus = { status, detail: detail || null };
@@ -66,7 +166,7 @@
       while (queue.length) {
         const message = queue.shift();
         try {
-          conn.send(message);
+          sendPayload(message);
         } catch (error) {
           emitStatus('error', { code: 'send-failed', error });
           break;
@@ -82,11 +182,10 @@
       }
       conn = nextConn;
       conn.on('open', emitOpen);
-      conn.on('data', function(data) {
-        if (handlers.onMessage) handlers.onMessage(data);
-      });
+      conn.on('data', handleIncomingData);
       conn.on('close', function() {
         connected = false;
+        chunkBuffers.clear();
         emitStatus('closed');
         if (!closed && handlers.onClose) handlers.onClose();
       });
@@ -131,7 +230,7 @@
         return false;
       }
       try {
-        conn.send(message);
+        sendPayload(message);
         return true;
       } catch (error) {
         emitStatus('error', { code: 'send-failed', error });
@@ -143,6 +242,7 @@
       if (closed) return;
       closed = true;
       connected = false;
+      chunkBuffers.clear();
       try { if (conn) conn.close(); } catch (error) {}
       try { if (peer) peer.destroy(); } catch (error) {}
       emitStatus('closed');

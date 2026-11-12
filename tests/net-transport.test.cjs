@@ -115,6 +115,8 @@ test('peer transport reports a clear error when PeerJS is unavailable', () => {
   peer.close();
 });
 
+const PEERJS_JSON_LIMIT = 16300;
+
 class FakeConnection {
   constructor(other) {
     this.other = other;
@@ -130,7 +132,13 @@ class FakeConnection {
   }
   send(data) {
     if (!this.open) throw new Error('closed');
-    const payload = JSON.parse(JSON.stringify(data));
+    const json = JSON.stringify(data);
+    // Mirrors PeerJS 1.5.5's JSON channel limit. Without application-level
+    // chunking, match snapshots (~25 KB) fail with "message-too-big".
+    if (new TextEncoder().encode(json).byteLength >= PEERJS_JSON_LIMIT) {
+      throw new Error('Message too big for JSON channel');
+    }
+    const payload = JSON.parse(json);
     setTimeout(() => this.other.emit('data', payload), 0);
   }
   close() {
@@ -221,6 +229,53 @@ test('peer transport connects host and guest through a PeerJS-like broker', asyn
   await wait(10);
   assert.deepEqual(hostReceived[0], { type: 'ready', from: 'guest', ready: true });
   assert.deepEqual(guestReceived[0], { type: 'hello', from: 'host' });
+
+  host.close();
+  guest.close();
+});
+
+test('peer transport chunks snapshots larger than the PeerJS JSON limit', async () => {
+  FakePeer.reset();
+  const host = transport.createPeerTransport({
+    role: 'host',
+    roomCode: 'PEER02',
+    window: {},
+    Peer: FakePeer
+  });
+  const guest = transport.createPeerTransport({
+    role: 'guest',
+    roomCode: 'PEER02',
+    window: {},
+    Peer: FakePeer
+  });
+  const guestReceived = [];
+  const statuses = [];
+  host.setHandlers({ onStatus: (status, detail) => statuses.push({ status, detail }) });
+  guest.setHandlers({
+    onMessage: data => guestReceived.push(data),
+    onStatus: (status, detail) => statuses.push({ status, detail })
+  });
+
+  await wait(20);
+  const snapshot = {
+    type: 'snapshot',
+    from: 'host',
+    payload: '"\\ñ'.repeat(8000),
+    players: Array.from({ length: 18 }, (_, index) => ({
+      id: 'p' + index,
+      x: index * 10.5,
+      y: index * 7.25,
+      name: 'Jugador ' + index
+    }))
+  };
+  assert.equal(host.send(snapshot), true);
+  await wait(50);
+
+  assert.equal(guestReceived.length, 1);
+  assert.equal(guestReceived[0].type, 'snapshot');
+  assert.equal(guestReceived[0].payload, snapshot.payload);
+  assert.deepEqual(guestReceived[0].players, snapshot.players);
+  assert.equal(statuses.some(entry => entry.status === 'error'), false);
 
   host.close();
   guest.close();

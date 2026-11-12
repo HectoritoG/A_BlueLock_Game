@@ -44,7 +44,7 @@ This bridge keeps the current `file://` workflow and the existing regression tes
 - `ui/hud.js` owns the DOM HUD updates through `createHud(runtime)`.
 - `input/input.js` owns keyboard and touch bindings through `createInput(runtime)`. Game actions are injected, so the module does not depend on audio or the HUD. In guest mode it forwards compact movement/action input instead of mutating local state.
 - `net/protocol.js` defines the versioned wire messages shared by host and guest.
-- `net/transport.js` wraps the two transports: PeerJS/WebRTC for different devices and `BroadcastChannel` for two tabs in the same browser. Both implement the same ready-handshake and message queue.
+- `net/transport.js` wraps the two transports: PeerJS/WebRTC for different devices and `BroadcastChannel` for two tabs in the same browser. Both implement the same ready-handshake and message queue. The PeerJS transport splits payloads larger than its 16 KB JSON limit into chunks and reassembles them on the other side, so match snapshots do not fail with `message-too-big`.
 - `net/room.js` implements the room lifecycle: hello/welcome, ready, start, input, snapshot, pause, end and leave.
 - `net/snapshot.js` serializes the authoritative match into stable player/ball fields and applies it on the guest. Entity references are resolved by stable IDs, never by object identity.
 - `ui/lobby.js` owns the private-room modal, host/join tabs, hero selects and ready/start flow. It is the only networking module that touches the DOM.
@@ -58,7 +58,7 @@ The browser game stays a classic script until `public/game/main.js` replaces the
 - The guest never simulates the match; it applies snapshots and interpolates visually.
 - If the guest leaves, the host keeps playing and the guest hero falls back to AI control.
 - If the host leaves, the guest pauses and can return to the menu.
-- PeerJS uses its public signaling broker, then a WebRTC data channel. The `BroadcastChannel` mode is intended for testing two tabs in the same browser.
+- PeerJS uses its public signaling broker, then a WebRTC data channel, so two players can be in different cities as long as both have internet. Most home networks connect directly; very restrictive NAT/firewall setups may need a TURN relay, which the public PeerJS broker does not provide. The `BroadcastChannel` mode is only for two tabs in the same browser.
 - GitHub Pages can host this because it only serves static files; the signaling broker is external and gameplay traffic is peer-to-peer.
 - Keep the host tab visible. The game includes a watchdog that keeps the simulation alive when the browser throttles `requestAnimationFrame`, but a visible tab has the best frame rate.
 
