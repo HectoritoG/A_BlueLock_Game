@@ -100,6 +100,82 @@ test('serializeMatch captures render state and resolves entity references', () =
   assert.equal(data.powerups[0].type, 'speed');
 });
 
+test('packSnapshot round-trips state in a much smaller payload', () => {
+  const host = { players: [], ball: new FakeBall(), stats: { possession: { blue: 4, red: 2 } }, powerups: [] };
+  const isagi = new FakePlayer(100.123456, 200.654321, 'blue', 'hero', 'isagi', 'FWD');
+  isagi.id = 'b1';
+  isagi.isHuman = true;
+  isagi.hasBall = true;
+  isagi.crowDefenseTimer = 2.5;
+  isagi.speedBuff = 1.6;
+  const sae = new FakePlayer(300, 400, 'red', 'hero', 'sae', 'MID');
+  sae.id = 'r1';
+  sae.isRemoteHuman = true;
+  host.players.push(isagi, sae);
+  host.ball.owner = isagi;
+  host.ball.lastShooter = sae;
+  host.ball.x = 123.456789;
+  host.ball.y = 456.123456;
+  host.ball.z = 12;
+  host.ball.dribbleOffset = { x: 4.444, y: -3.333 };
+  host.timeLeft = 88.876;
+  host.scoreBlue = 2;
+  host.scoreRed = 1;
+  host.paused = false;
+  host.goalCelebrating = false;
+  host.goalTimer = 0;
+  host.replayMode = true;
+  host.replayTeam = 'blue';
+  host.replayGoalX = 2100.555;
+  host.powerups = [{ x: 50.123, y: 60.987, type: 'speed', life: 12.345, phase: 0.5, collected: false }];
+  host.karasuCrow = { player: sae, x: 10, y: 20, life: 1, maxLife: 1.5, team: 'red' };
+  host.nagiSkull = { x: 7, y: 8, z: 9, life: 0.5, maxLife: 1.35 };
+  host.shidouAnimActive = true;
+  host.shidouAnimTimer = 0.4;
+  host.shidouAnimPlayer = isagi;
+
+  const full = snapshot.serializeMatch(host);
+  full.hostTime = 12345.678;
+  full.seq = 7;
+  const packed = snapshot.packSnapshot(full);
+  const fullSize = JSON.stringify(full).length;
+  const packedSize = JSON.stringify(packed).length;
+  assert.ok(packedSize < fullSize * 0.7, `packed ${packedSize} should be smaller than ${fullSize}`);
+
+  const unpacked = snapshot.unpackSnapshot(packed);
+  assert.equal(unpacked.hostTime, 12345.678);
+  assert.equal(unpacked.seq, 7);
+  assert.equal(unpacked.timeLeft, 88.88);
+  assert.equal(unpacked.players.length, 2);
+  assert.equal(unpacked.players[0].id, 'b1');
+  assert.equal(unpacked.players[0].x, 100.12);
+  assert.equal(unpacked.players[0].hasBall, true);
+  assert.equal(unpacked.players[0].isHuman, true);
+  assert.equal(unpacked.players[0].aiTarget, undefined);
+  assert.equal(unpacked.players[1].isRemoteHuman, true);
+  assert.equal(unpacked.ball.ownerId, 'b1');
+  assert.equal(unpacked.ball.x, 123.46);
+  assert.deepEqual(unpacked.ball.dribbleOffset, { x: 4.44, y: -3.33 });
+  assert.equal(unpacked.replayMode, true);
+  assert.equal(unpacked.replayTeam, 'blue');
+  assert.equal(unpacked.replayGoalX, 2100.55);
+  assert.equal(unpacked.powerups[0].type, 'speed');
+  assert.equal(unpacked.karasuCrow.playerId, 'r1');
+  assert.equal(unpacked.shidouAnimPlayerId, 'b1');
+
+  const guest = { players: [], ball: null, stats: {} };
+  snapshot.applyMatch(guest, unpacked, { Player: FakePlayer, Ball: FakeBall });
+  assert.equal(guest.replayMode, true);
+  assert.equal(guest.replayTeam, 'blue');
+  assert.equal(guest.replayGoalX, 2100.55);
+  assert.equal(guest.players[0].x, 100.12);
+});
+
+test('unpackSnapshot leaves an uncompressed snapshot untouched', () => {
+  const full = { timeLeft: 10, players: [] };
+  assert.equal(snapshot.unpackSnapshot(full), full);
+});
+
 test('applyMatch updates an existing guest state and resolves references', () => {
   const data = {
     timeLeft: 33,

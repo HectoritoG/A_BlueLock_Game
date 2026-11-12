@@ -47,17 +47,18 @@ This bridge keeps the current `file://` workflow and the existing regression tes
 - `net/protocol.js` defines the versioned wire messages shared by host and guest.
 - `net/transport.js` wraps the two transports: PeerJS/WebRTC for different devices and `BroadcastChannel` for two tabs in the same browser. Both implement the same ready-handshake and message queue. The PeerJS transport splits payloads larger than its 16 KB JSON limit into chunks and reassembles them on the other side, so match snapshots do not fail with `message-too-big`.
 - `net/room.js` implements the room lifecycle: hello/welcome, ready, start, input, snapshot, pause, end and leave.
-- `net/snapshot.js` serializes the authoritative match into stable player/ball fields and applies it on the guest. Entity references are resolved by stable IDs, never by object identity.
-- `net/interpolation.js` buffers guest snapshots and renders between them. Host snapshots carry a `hostTime` and `seq`; the guest estimates the clock offset from the fastest packets, waits a short render delay, and interpolates player/ball positions, facing angles and the timer. Large jumps snap instead of sliding across the field.
+- `net/snapshot.js` serializes the authoritative match into stable player/ball fields and applies it on the guest. Entity references are resolved by stable IDs, never by object identity. Snapshots also use a compact wire format: values are packed into arrays with per-player field masks and rounded to two decimals, which keeps a full 18-player snapshot small enough to avoid chunking on typical connections.
+- `net/interpolation.js` buffers guest snapshots and renders between them. Host snapshots carry a `hostTime` and `seq`; the guest estimates the clock offset from the fastest packets, waits a short render delay, and interpolates player/ball positions, facing angles and the timer. The delay grows when arrival jitter is high (up to a cap) so the guest stays smooth instead of stalling. Large jumps snap instead of sliding across the field.
 - `ui/lobby.js` owns the private-room modal, host/join tabs, hero selects and ready/start flow. It is the only networking module that touches the DOM.
 
 ## Private 1v1 rooms
 
 The browser game stays a classic script until `public/game/main.js` replaces the inline bootstrap.
 
-- The host owns the authoritative `MatchState` and simulation. It sends snapshots at 12 Hz.
+- The host owns the authoritative `MatchState` and simulation. It sends compact snapshots at 15 Hz.
 - The guest controls one red rival hero and sends compact movement/action input at 30 Hz.
-- The guest never simulates the match; it buffers host snapshots and renders ~90 ms behind them, interpolating between snapshots so movement runs at display refresh instead of stepping at 12 Hz.
+- The guest never simulates the match; it buffers host snapshots and renders ~90 ms behind them (plus an adaptive jitter allowance), interpolating between snapshots so movement runs at display refresh instead of stepping at 15 Hz.
+- Goal replays stay host-authoritative: the host keeps sending replay snapshots while it plays the recorded frames, and the guest renders the same replay with the replay camera, the replay banner and the goal message.
 - If the guest leaves, the host keeps playing and the guest hero falls back to AI control.
 - If the host leaves, the guest pauses and can return to the menu.
 - PeerJS uses its public signaling broker, then a WebRTC data channel, so two players can be in different cities as long as both have internet. Most home networks connect directly; very restrictive NAT/firewall setups may need a TURN relay, which the public PeerJS broker does not provide. The `BroadcastChannel` mode is only for two tabs in the same browser.

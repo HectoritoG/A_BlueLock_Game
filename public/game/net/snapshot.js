@@ -89,6 +89,9 @@
       scoreRed: Number(G.scoreRed) || 0,
       goalCelebrating: !!G.goalCelebrating,
       goalTimer: Number(G.goalTimer) || 0,
+      replayMode: !!G.replayMode,
+      replayTeam: G.replayTeam || null,
+      replayGoalX: Number(G.replayGoalX) || 0,
       paused: !!G.paused,
       cameraShake: Number(G.cameraShake) || 0,
       stats: clonePlain(G.stats || {}),
@@ -107,6 +110,132 @@
       shidouAnimActive: !!G.shidouAnimActive,
       shidouAnimTimer: Number(G.shidouAnimTimer) || 0,
       shidouAnimPlayerId: G.shidouAnimPlayer && G.shidouAnimPlayer.id ? G.shidouAnimPlayer.id : null
+    };
+  }
+
+  // Compact wire format. The guest needs the same state, but repeating every
+  // field name for 18 players makes each JSON snapshot ~25 KB. Packing values
+  // into arrays with a per-player field mask keeps the payload small enough
+  // for a 15 Hz WebRTC stream without chunking on most connections.
+  const PACK_VERSION = 1;
+  const BALL_PACK_FIELDS = BALL_SYNC_FIELDS.concat([
+    'ownerId', 'passTargetId', 'lastShooterId', 'lastPasserId', 'lastTouchId'
+  ]);
+
+  function packNumber(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return value;
+    return Math.round(value * 100) / 100;
+  }
+
+  function packFields(source, fields) {
+    const maskCount = Math.ceil(fields.length / 32);
+    const masks = new Array(maskCount);
+    for (let i = 0; i < maskCount; i++) masks[i] = 0;
+    const values = [];
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      if (!source || !Object.prototype.hasOwnProperty.call(source, field) || source[field] === undefined) continue;
+      masks[Math.floor(i / 32)] = (masks[Math.floor(i / 32)] | (1 << (i % 32))) >>> 0;
+      values.push(packNumber(source[field]));
+    }
+    return [masks, values];
+  }
+
+  function unpackFields(data, fields) {
+    const maskCount = Math.ceil(fields.length / 32);
+    const masks = data || [];
+    const values = masks[maskCount] || [];
+    const out = {};
+    let valueIndex = 0;
+    for (let i = 0; i < fields.length; i++) {
+      const mask = Number(masks[Math.floor(i / 32)]) >>> 0;
+      if ((mask >>> (i % 32)) & 1) {
+        out[fields[i]] = values[valueIndex++];
+      }
+    }
+    return out;
+  }
+
+  function packPlayer(player) {
+    const packed = packFields(player, PLAYER_SYNC_FIELDS);
+    return packed[0].concat([packed[1]]);
+  }
+
+  function unpackPlayer(data) {
+    return unpackFields(data, PLAYER_SYNC_FIELDS);
+  }
+
+  function packBall(ball) {
+    if (!ball) return null;
+    const packed = packFields(ball, BALL_PACK_FIELDS);
+    const offset = ball.dribbleOffset || { x: 0, y: 0 };
+    return packed[0].concat([packed[1], packNumber(offset.x), packNumber(offset.y)]);
+  }
+
+  function unpackBall(data) {
+    if (!data) return null;
+    const ball = unpackFields(data, BALL_PACK_FIELDS);
+    const maskCount = Math.ceil(BALL_PACK_FIELDS.length / 32);
+    ball.dribbleOffset = { x: Number(data[maskCount + 1]) || 0, y: Number(data[maskCount + 2]) || 0 };
+    return ball;
+  }
+
+  function packSnapshot(snapshot) {
+    if (!snapshot) return null;
+    return {
+      __bl: PACK_VERSION,
+      h: snapshot.hostTime,
+      q: snapshot.seq,
+      t: packNumber(snapshot.timeLeft),
+      b: snapshot.scoreBlue,
+      r: snapshot.scoreRed,
+      g: snapshot.goalCelebrating ? 1 : 0,
+      gt: packNumber(snapshot.goalTimer),
+      p: snapshot.paused ? 1 : 0,
+      cs: packNumber(snapshot.cameraShake),
+      st: snapshot.stats || {},
+      pu: (snapshot.powerups || []).map(function(pu) {
+        return [packNumber(pu.x), packNumber(pu.y), pu.type, packNumber(pu.life), packNumber(pu.phase), pu.collected ? 1 : 0];
+      }),
+      pl: (snapshot.players || []).map(packPlayer),
+      ba: packBall(snapshot.ball),
+      kc: snapshot.karasuCrow || null,
+      ns: snapshot.nagiSkull || null,
+      sa: snapshot.shidouAnimActive ? 1 : 0,
+      sat: packNumber(snapshot.shidouAnimTimer),
+      sap: snapshot.shidouAnimPlayerId || null,
+      rm: snapshot.replayMode ? 1 : 0,
+      rt: snapshot.replayTeam || null,
+      rg: packNumber(snapshot.replayGoalX)
+    };
+  }
+
+  function unpackSnapshot(packed) {
+    if (!packed || packed.__bl !== PACK_VERSION) return packed;
+    return {
+      hostTime: packed.h,
+      seq: packed.q,
+      timeLeft: Number(packed.t) || 0,
+      scoreBlue: Number(packed.b) || 0,
+      scoreRed: Number(packed.r) || 0,
+      goalCelebrating: !!packed.g,
+      goalTimer: Number(packed.gt) || 0,
+      replayMode: !!packed.rm,
+      replayTeam: packed.rt || null,
+      replayGoalX: Number(packed.rg) || 0,
+      paused: !!packed.p,
+      cameraShake: Number(packed.cs) || 0,
+      stats: packed.st || {},
+      powerups: (packed.pu || []).map(function(pu) {
+        return { x: pu[0], y: pu[1], type: pu[2], life: pu[3], phase: pu[4], collected: !!pu[5] };
+      }),
+      players: (packed.pl || []).map(unpackPlayer),
+      ball: unpackBall(packed.ba),
+      karasuCrow: packed.kc || null,
+      nagiSkull: packed.ns || null,
+      shidouAnimActive: !!packed.sa,
+      shidouAnimTimer: Number(packed.sat) || 0,
+      shidouAnimPlayerId: packed.sap || null
     };
   }
 
@@ -198,6 +327,9 @@
     G.scoreRed = Number(snapshot.scoreRed) || 0;
     G.goalCelebrating = !!snapshot.goalCelebrating;
     G.goalTimer = Number(snapshot.goalTimer) || 0;
+    G.replayMode = !!snapshot.replayMode;
+    G.replayTeam = snapshot.replayTeam || null;
+    G.replayGoalX = Number(snapshot.replayGoalX) || 0;
     G.paused = !!snapshot.paused;
     G.cameraShake = Number(snapshot.cameraShake) || 0;
     G.stats = clonePlain(snapshot.stats || {});
@@ -236,6 +368,9 @@
     serializePlayer,
     serializeBall,
     serializeMatch,
+    packSnapshot,
+    unpackSnapshot,
+    PACK_VERSION,
     buildRoster,
     createPlayersFromRoster,
     applyPlayer,

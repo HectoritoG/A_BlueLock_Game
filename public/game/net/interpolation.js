@@ -11,6 +11,12 @@
     // Render slightly behind the newest snapshot so there is always a pair to
     // interpolate, even when packets arrive with a little jitter.
     delayMs: 90,
+    // Extra render delay added when packet arrival jitter is high. This trades
+    // a little input latency for smooth motion instead of frequent stalls.
+    maxExtraDelayMs: 100,
+    // Maximum change of the render delay per received snapshot. Squeezing the
+    // delay in small steps avoids visible rewinds when the network changes.
+    maxDelayStepMs: 12,
     maxSnapshots: 40,
     maxPlayerJump: 600,
     maxBallJump: 1200,
@@ -146,11 +152,13 @@
     // would bake its connection-setup delay into every frame and make the
     // guest render hundreds of milliseconds late.
     let clockOffset = null;
+    let clockDelay = opts.delayMs;
     let lastSequence = null;
 
     function reset() {
       entries = [];
       clockOffset = null;
+      clockDelay = opts.delayMs;
       lastSequence = null;
     }
 
@@ -189,21 +197,34 @@
       while (entries.length > opts.maxSnapshots) entries.shift();
       // Keep a sliding-window minimum so a change in network conditions can
       // still adjust the render clock instead of freezing on an old offset.
-      clockOffset = null;
+      // The p85 offset (relative to the fastest packet) estimates jitter and
+      // adds delay only when the connection actually needs it.
+      const offsets = [];
       for (let i = 0; i < entries.length; i++) {
-        const offset = entries[i].offset;
-        if (offset !== null && (clockOffset === null || offset < clockOffset)) {
-          clockOffset = offset;
-        }
+        if (entries[i].offset !== null) offsets.push(entries[i].offset);
       }
-      if (clockOffset === null) clockOffset = 0;
+      if (offsets.length) {
+        offsets.sort(function(a, b) { return a - b; });
+        clockOffset = offsets[0];
+        const p85 = offsets[Math.floor((offsets.length - 1) * 0.85)];
+        const jitter = Math.max(0, p85 - clockOffset);
+        const targetDelay = opts.delayMs + Math.min(opts.maxExtraDelayMs, jitter);
+        // Move the render delay towards its target in small steps so the
+        // rendered timeline never jumps backwards when the jitter changes.
+        const maxStep = numberOr(opts.maxDelayStepMs, DEFAULTS.maxDelayStepMs);
+        const delta = targetDelay - clockDelay;
+        clockDelay += Math.max(-maxStep, Math.min(maxStep, delta));
+      } else {
+        clockOffset = 0;
+        clockDelay = opts.delayMs;
+      }
       return true;
     }
 
     function sample(now) {
       if (!entries.length) return null;
       const at = numberOr(now, nowMs());
-      const renderHostTime = at - (clockOffset === null ? 0 : clockOffset) - opts.delayMs;
+      const renderHostTime = at - (clockOffset === null ? 0 : clockOffset) - clockDelay;
       if (entries.length === 1 || renderHostTime <= entries[0].hostTime) {
         return cloneSnapshot(entries[0].snapshot);
       }

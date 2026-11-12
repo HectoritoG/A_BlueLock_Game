@@ -1528,7 +1528,7 @@ let netHostLeft = false;
 let lobby = null;
 let rafScheduled = false;
 const NET_INPUT_INTERVAL = 1 / 30;
-const NET_SNAPSHOT_INTERVAL = 1 / 12;
+const NET_SNAPSHOT_INTERVAL = 1 / 15;
 const netInterpolator = window.BLNetInterpolation
   ? window.BLNetInterpolation.createSnapshotInterpolator({ delayMs: 90 })
   : { push: function(){}, sample: function(){ return null; }, reset: function(){} };
@@ -2943,6 +2943,55 @@ function updateCamera(){
   camY = lerp(camY, targetY, cameraSmooth);
 }
 
+function updateReplayCamera(){
+  const goalCX = G.replayGoalX || (FIELD.x + FIELD.w/2);
+  const goalCY = FIELD.y + FIELD.h/2;
+  const viewW = W / GAME_SCALE, viewH = H / GAME_SCALE;
+  const targetX = G.ball.x * 0.7 + goalCX * 0.3 - viewW/2;
+  const targetY = G.ball.y * 0.7 + goalCY * 0.3 - viewH/2;
+  const clampedX = clamp(targetX, FIELD.x - 60, FIELD.x + FIELD.w - viewW + 60);
+  const clampedY = clamp(targetY, FIELD.y - 40, FIELD.y + FIELD.h - viewH + 40);
+  camX = lerp(camX, clampedX, 0.12);
+  camY = lerp(camY, clampedY, 0.12);
+}
+
+function syncReplayBanner(){
+  const banner = document.getElementById('replayBanner');
+  if(!banner) return;
+  if(G.replayMode && !banner.classList.contains('show')){
+    banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
+  } else if(!G.replayMode && banner.classList.contains('show')){
+    banner.classList.remove('show');
+  }
+}
+
+// The host announces the goal with a DOM overlay that the guest never sees,
+// because the guest only receives match state. The replay flag is the signal
+// used to replay that moment on the guest side.
+let netGoalOverlayShown = false;
+function syncGoalOverlay(){
+  const msg = document.getElementById('goalMsg');
+  if(!msg) return;
+  if(G.replayMode && !netGoalOverlayShown){
+    netGoalOverlayShown = true;
+    const ownGoal = G.replayTeam === 'red';
+    const color = ownGoal ? '#ff2e63' : '#00d9ff';
+    msg.textContent = ownGoal ? '¡GOAL!' : '¡GOAL RIVAL!';
+    msg.style.color = color;
+    msg.style.textShadow = `0 0 30px ${color}, 0 0 60px ${color}`;
+    msg.classList.remove('show'); void msg.offsetWidth; msg.classList.add('show');
+    const flash = document.getElementById('screenFlash');
+    if(flash){
+      flash.style.background = color;
+      flash.classList.remove('flash'); void flash.offsetWidth; flash.classList.add('flash');
+    }
+    SFX.goal(); SFX.cheer(0.35);
+  } else if(!G.replayMode && netGoalOverlayShown){
+    netGoalOverlayShown = false;
+    msg.classList.remove('show');
+  }
+}
+
 function getViewPlayer(){
   if(G.netMode === 'guest' && G.localPlayerId){
     const guest = G.players.find(p => p.id === G.localPlayerId);
@@ -3005,7 +3054,7 @@ function sendHostSnapshot(dt){
   const snapshot = BLSnapshot.serializeMatch(G);
   snapshot.hostTime = performance.now();
   snapshot.seq = (G.netSnapshotSeq = (G.netSnapshotSeq || 0) + 1);
-  netRoom.sendSnapshot(snapshot);
+  netRoom.sendSnapshot(BLSnapshot.packSnapshot(snapshot));
 }
 function processRemoteAction(p, action){
   if(!p) return;
@@ -3862,25 +3911,19 @@ function animate(now){
       ctx.restore();
       return;
     }
-    // === GOAL REPLAY MODE ===
-    if(G.replayMode){
+    // === GOAL REPLAY MODE (host/local only) ===
+    // The guest receives the host's replay positions through normal snapshots
+    // and renders them in the guest branch below. It must not run the replay
+    // player (it has no local replay frames).
+    if(G.replayMode && G.netMode !== 'guest'){
       updateGoalReplay(dt);
       updateParticles(dt);
       updateHioriSnowfields(dt);
       updateKuronaBlackHoles(dt);
       updateKarasuCrow(dt);
       updateBarouLionAura(dt);
-      // Camera tracks the ball + blends toward goal area during replay
-      const goalCX = G.replayGoalX;
-      const goalCY = FIELD.y + FIELD.h/2;
-      const viewW = W / GAME_SCALE, viewH = H / GAME_SCALE;
-      // Blend between ball position and goal position (70% ball, 30% goal)
-      const targetX = G.ball.x * 0.7 + goalCX * 0.3 - viewW/2;
-      const targetY = G.ball.y * 0.7 + goalCY * 0.3 - viewH/2;
-      const clampedX = clamp(targetX, FIELD.x - 60, FIELD.x + FIELD.w - viewW + 60);
-      const clampedY = clamp(targetY, FIELD.y - 40, FIELD.y + FIELD.h - viewH + 40);
-      camX = lerp(camX, clampedX, 0.12);
-      camY = lerp(camY, clampedY, 0.12);
+      updateReplayCamera();
+      if(G.netMode === 'host') sendHostSnapshot(dt);
       ctx.save();
       if(GAME_SCALE !== 1.0){
         ctx.scale(GAME_SCALE, GAME_SCALE);
@@ -3899,9 +3942,11 @@ function animate(now){
     }
     if(G.netMode === 'guest'){
       // The guest never simulates. It samples the snapshot buffer with a
-      // short delay so movement is interpolated instead of stepping at 12 Hz.
+      // short delay so movement is interpolated instead of stepping at 15 Hz.
       applyLatestSnapshot(now);
-      updateCamera();
+      syncReplayBanner();
+      syncGoalOverlay();
+      if(G.replayMode) updateReplayCamera(); else updateCamera();
       updateScoreUI(); updateTimerUI(); updateHeroPanel(getActivePlayer());
       updateCooldownUI(); updateShotChargeUI(); updatePosIndicator(); updateBallOwnerTag();
       updatePossessionBar();
@@ -4161,8 +4206,13 @@ function handleRoomEvent(event){
     return;
   }
   if(event.type === 'snapshot' && G.netMode === 'guest'){
-    netLatestSnapshot = event.snapshot;
-    netInterpolator.push(event.snapshot, performance.now());
+    const snapshot = BLSnapshot.unpackSnapshot(event.snapshot);
+    if(!snapshot) return;
+    // Replay starts/ends with a teleport between live play and the recorded
+    // frames. Clear the buffer so the guest snaps once instead of sliding.
+    if(!!snapshot.replayMode !== !!G.replayMode) netInterpolator.reset();
+    netLatestSnapshot = snapshot;
+    netInterpolator.push(snapshot, performance.now());
     return;
   }
   if(event.type === 'pause' && G.netMode === 'guest'){

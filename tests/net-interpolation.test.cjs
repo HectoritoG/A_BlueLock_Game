@@ -68,7 +68,7 @@ test('interpolator renders between the two newest snapshots with a small delay',
 });
 
 test('interpolator ignores a slow first packet when estimating the clock offset', () => {
-  const interpolator = interpolation.createSnapshotInterpolator({ delayMs: 50 });
+  const interpolator = interpolation.createSnapshotInterpolator({ delayMs: 50, maxExtraDelayMs: 0 });
   // The first packet took ~1s to arrive; later packets are much faster. The
   // render clock must use the fastest observed offset, not the first one.
   interpolator.push(snapshot(0, 1, 0, 0), 1000);
@@ -78,6 +78,32 @@ test('interpolator ignores a slow first packet when estimating the clock offset'
   const sampled = interpolator.sample(1020);
   closeTo(sampled.players[0].x, 150);
   closeTo(sampled.ball.x, 300);
+});
+
+test('interpolator adds delay when packet arrival jitter is high', () => {
+  const interpolator = interpolation.createSnapshotInterpolator({ delayMs: 50, maxExtraDelayMs: 100, maxDelayStepMs: 100 });
+  interpolator.push(snapshot(0, 1, 0, 0), 1000);
+  interpolator.push(snapshot(100, 2, 100, 200), 1200);
+  interpolator.push(snapshot(200, 3, 200, 400), 1400);
+
+  // The p85 arrival offset is 100 ms above the fastest packet, so the render
+  // clock is delayed 100 ms extra and still sits between two snapshots.
+  const sampled = interpolator.sample(1300);
+  closeTo(sampled.players[0].x, 150);
+  closeTo(sampled.ball.x, 300);
+});
+
+test('interpolator ramps the jitter delay instead of jumping the timeline', () => {
+  const interpolator = interpolation.createSnapshotInterpolator({ delayMs: 50, maxExtraDelayMs: 100, maxDelayStepMs: 10 });
+  interpolator.push(snapshot(0, 1, 0, 0), 1000);
+  interpolator.push(snapshot(100, 2, 100, 200), 1200);
+  interpolator.push(snapshot(200, 3, 200, 400), 1400);
+
+  // Only 10 ms of extra delay could be applied so far, so the render clock
+  // stays close to the newest snapshot instead of rewinding 100 ms.
+  const sampled = interpolator.sample(1300);
+  closeTo(sampled.players[0].x, 240);
+  closeTo(sampled.ball.x, 480);
 });
 
 test('interpolator extrapolates briefly when the next snapshot is late', () => {
