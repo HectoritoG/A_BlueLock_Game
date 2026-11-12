@@ -23,12 +23,13 @@ The files in `core/` are still loaded as classic scripts from `public/bluelock.h
 <script src="./game/net/transport.js"></script>
 <script src="./game/net/room.js"></script>
 <script src="./game/net/snapshot.js"></script>
+<script src="./game/net/interpolation.js"></script>
 <script src="./game/ui/lobby.js"></script>
 ```
 
 Each module uses a UMD wrapper so it can be:
 
-- loaded by the browser as a classic script (`window.BLConstants`, `window.BLMath`, `window.BLRng`, `window.BLMatchState`, `window.BLEntities`, `window.BLEntityRenderer`, `window.BLAI`, `window.BLAudio`, `window.BLSession`, `window.BLHud`, `window.BLInput`, `window.BLNetProtocol`, `window.BLNetTransport`, `window.BLRoom`, `window.BLNetSnapshot`, `window.BLLobby`);
+- loaded by the browser as a classic script (`window.BLConstants`, `window.BLMath`, `window.BLRng`, `window.BLMatchState`, `window.BLEntities`, `window.BLEntityRenderer`, `window.BLAI`, `window.BLAudio`, `window.BLSession`, `window.BLHud`, `window.BLInput`, `window.BLNetProtocol`, `window.BLNetTransport`, `window.BLRoom`, `window.BLNetSnapshot`, `window.BLNetInterpolation`, `window.BLLobby`);
 - required from Node for tests and, later, the multiplayer server.
 
 This bridge keeps the current `file://` workflow and the existing regression tests working. When the main game script is moved to `public/game/main.js`, these modules can be converted to native ES modules.
@@ -47,6 +48,7 @@ This bridge keeps the current `file://` workflow and the existing regression tes
 - `net/transport.js` wraps the two transports: PeerJS/WebRTC for different devices and `BroadcastChannel` for two tabs in the same browser. Both implement the same ready-handshake and message queue. The PeerJS transport splits payloads larger than its 16 KB JSON limit into chunks and reassembles them on the other side, so match snapshots do not fail with `message-too-big`.
 - `net/room.js` implements the room lifecycle: hello/welcome, ready, start, input, snapshot, pause, end and leave.
 - `net/snapshot.js` serializes the authoritative match into stable player/ball fields and applies it on the guest. Entity references are resolved by stable IDs, never by object identity.
+- `net/interpolation.js` buffers guest snapshots and renders between them. Host snapshots carry a `hostTime` and `seq`; the guest estimates the clock offset from the fastest packets, waits a short render delay, and interpolates player/ball positions, facing angles and the timer. Large jumps snap instead of sliding across the field.
 - `ui/lobby.js` owns the private-room modal, host/join tabs, hero selects and ready/start flow. It is the only networking module that touches the DOM.
 
 ## Private 1v1 rooms
@@ -55,7 +57,7 @@ The browser game stays a classic script until `public/game/main.js` replaces the
 
 - The host owns the authoritative `MatchState` and simulation. It sends snapshots at 12 Hz.
 - The guest controls one red rival hero and sends compact movement/action input at 30 Hz.
-- The guest never simulates the match; it applies snapshots and interpolates visually.
+- The guest never simulates the match; it buffers host snapshots and renders ~90 ms behind them, interpolating between snapshots so movement runs at display refresh instead of stepping at 12 Hz.
 - If the guest leaves, the host keeps playing and the guest hero falls back to AI control.
 - If the host leaves, the guest pauses and can return to the menu.
 - PeerJS uses its public signaling broker, then a WebRTC data channel, so two players can be in different cities as long as both have internet. Most home networks connect directly; very restrictive NAT/firewall setups may need a TURN relay, which the public PeerJS broker does not provide. The `BroadcastChannel` mode is only for two tabs in the same browser.

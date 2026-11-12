@@ -788,6 +788,7 @@
 <script src="./game/net/transport.js"></script>
 <script src="./game/net/room.js"></script>
 <script src="./game/net/snapshot.js"></script>
+<script src="./game/net/interpolation.js"></script>
 <script src="./game/ui/lobby.js"></script>
 <script>
 // === SHARED CORE (classic bridge until main.js is modularized) ===
@@ -1528,6 +1529,9 @@ let lobby = null;
 let rafScheduled = false;
 const NET_INPUT_INTERVAL = 1 / 30;
 const NET_SNAPSHOT_INTERVAL = 1 / 12;
+const netInterpolator = window.BLNetInterpolation
+  ? window.BLNetInterpolation.createSnapshotInterpolator({ delayMs: 90 })
+  : { push: function(){}, sample: function(){ return null; }, reset: function(){} };
 
 // === FORMATION SYSTEM ===
 const FORMATION_MEMORY = {};
@@ -1970,6 +1974,7 @@ function togglePause(){
 }
 function applyNetworkPause(paused){
   if(G.netMode !== 'guest') return;
+  netInterpolator.reset();
   G.paused = !!paused;
   const p = getActivePlayer(); if(p) p.cancelShotCharge();
   const ps = document.getElementById('pauseScreen');
@@ -2933,8 +2938,9 @@ function updateCamera(){
   targetX = clamp(targetX, FIELD.x - 60, FIELD.x + FIELD.w - viewW + 60);
   targetY = clamp(targetY, FIELD.y - 40, FIELD.y + FIELD.h - viewH + 40);
   if(FIELD.h < viewH){ targetY = FIELD.y + FIELD.h/2 - viewH/2; }
-  camX = lerp(camX, targetX, 0.08);
-  camY = lerp(camY, targetY, 0.08);
+  const cameraSmooth = G.netMode === 'guest' ? 0.12 : 0.08;
+  camX = lerp(camX, targetX, cameraSmooth);
+  camY = lerp(camY, targetY, cameraSmooth);
 }
 
 function getViewPlayer(){
@@ -2978,10 +2984,12 @@ function sendGuestInput(dt){
   netInputTimer = 0;
   netRoom.sendInput(readGuestInput(), []);
 }
-function applyLatestSnapshot(){
-  if(G.netMode !== 'guest' || !netLatestSnapshot) return;
-  const snapshot = netLatestSnapshot;
-  netLatestSnapshot = null;
+function applyLatestSnapshot(now){
+  if(G.netMode !== 'guest') return;
+  let snapshot = netInterpolator.sample(now);
+  // Fallback for an old host that does not stamp snapshots.
+  if(!snapshot && netLatestSnapshot) snapshot = netLatestSnapshot;
+  if(!snapshot) return;
   const wasPaused = !!G.paused;
   BLSnapshot.applyMatch(G, snapshot, { Player, Ball });
   if(G.localPlayerId){
@@ -2994,7 +3002,10 @@ function sendHostSnapshot(dt){
   netSnapshotTimer += dt;
   if(netSnapshotTimer < NET_SNAPSHOT_INTERVAL) return;
   netSnapshotTimer = 0;
-  netRoom.sendSnapshot(BLSnapshot.serializeMatch(G));
+  const snapshot = BLSnapshot.serializeMatch(G);
+  snapshot.hostTime = performance.now();
+  snapshot.seq = (G.netSnapshotSeq = (G.netSnapshotSeq || 0) + 1);
+  netRoom.sendSnapshot(snapshot);
 }
 function processRemoteAction(p, action){
   if(!p) return;
@@ -3887,9 +3898,9 @@ function animate(now){
       return;
     }
     if(G.netMode === 'guest'){
-      // The guest never simulates. It applies the host snapshot, moves the
-      // camera and sends its input back at a fixed rate.
-      applyLatestSnapshot();
+      // The guest never simulates. It samples the snapshot buffer with a
+      // short delay so movement is interpolated instead of stepping at 12 Hz.
+      applyLatestSnapshot(now);
       updateCamera();
       updateScoreUI(); updateTimerUI(); updateHeroPanel(getActivePlayer());
       updateCooldownUI(); updateShotChargeUI(); updatePosIndicator(); updateBallOwnerTag();
@@ -4048,6 +4059,8 @@ function startGame(heroKey, options){
   G.remoteGuestHero = startOptions.guestHero || null;
   netHostLeft = false;
   netLatestSnapshot = null;
+  netInterpolator.reset();
+  G.netSnapshotSeq = 0;
   netRemoteActions = [];
   netRemoteInput = { up:false, down:false, left:false, right:false };
   netInputTimer = 0;
@@ -4073,6 +4086,8 @@ function startGuestMatch(payload){
   netMatchReady = true;
   netHostLeft = false;
   netLatestSnapshot = null;
+  netInterpolator.reset();
+  G.netSnapshotSeq = 0;
   netRemoteActions = [];
   netInputTimer = 0;
   netSnapshotTimer = 0;
@@ -4147,6 +4162,7 @@ function handleRoomEvent(event){
   }
   if(event.type === 'snapshot' && G.netMode === 'guest'){
     netLatestSnapshot = event.snapshot;
+    netInterpolator.push(event.snapshot, performance.now());
     return;
   }
   if(event.type === 'pause' && G.netMode === 'guest'){
@@ -4161,6 +4177,7 @@ function handleRoomEvent(event){
     return;
   }
   if(event.type === 'leave'){
+    netInterpolator.reset();
     if(G.netMode === 'host'){
       const guestPlayer = G.players.find(p => p.id === G.remoteGuestId);
       if(guestPlayer){ guestPlayer.isRemoteHuman = false; guestPlayer.isHuman = false; }
@@ -4179,6 +4196,7 @@ function handleRoomEvent(event){
   }
 }
 function endGame(){
+  netInterpolator.reset();
   if(G.netMode === 'host' && netRoom){
     netRoom.sendEnd({ scoreBlue: G.scoreBlue, scoreRed: G.scoreRed, stats: G.stats });
   }
