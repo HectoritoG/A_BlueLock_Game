@@ -18,6 +18,35 @@
     const camera = runtime.camera;
     const viewport = runtime.viewport;
 
+    // Player sprites are clipped to a circle every frame, and a clip path is
+    // expensive on the canvas. The circular version of every character image
+    // is rendered once into an offscreen canvas and then blitted, which keeps
+    // the same look without the per-player clip.
+    const spriteCache = new Map();
+    const doc = runtime.document || (typeof document !== 'undefined' ? document : null);
+    function circleSprite(key, image) {
+      if (!doc) return null;
+      if (spriteCache.has(key)) return spriteCache.get(key);
+      let sprite = null;
+      try {
+        const size = Math.min(160, Math.max(48, image.naturalWidth || 96));
+        const canvas = doc.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const sctx = canvas.getContext('2d');
+        const half = size / 2;
+        sctx.beginPath();
+        sctx.arc(half, half, half - 0.5, 0, Math.PI * 2);
+        sctx.closePath();
+        sctx.clip();
+        sctx.drawImage(image, 0, 0, size, size);
+        sprite = canvas;
+      } catch (error) {
+        sprite = null;
+      }
+      spriteCache.set(key, sprite);
+      return sprite;
+    }
+
     function drawBall(ball) {
       const screenX = ball.x - camera.x, screenY = ball.y - camera.y;
       const shadowScale = clamp(1 - ball.z * 0.01, 0.3, 1);
@@ -70,7 +99,9 @@
       const teamBaseColor = player.team === 'blue' ? '#00d9ff' : '#ff2e63';
       const r = PLAYER_R * player.size;
 
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(screenX, screenY + 4, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      if(!G.lowFx){
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(screenX, screenY + 4, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      }
 
       if(player.isAwakened){
         ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 25;
@@ -156,12 +187,6 @@
 
       const drawY = player.nagiCharge > 0 ? screenY - 25 : screenY;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(screenX, drawY, r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-
       // === LÓGICA DE IMAGEN DESPERTADO ===
       let imgKey = player.charKey;
       const awakenKey = player.charKey + '_awaken';
@@ -169,13 +194,22 @@
       if(player.isAwakened && awakenImg && awakenImg.complete && awakenImg.naturalWidth !== 0) imgKey = awakenKey;
 
       const img = CHAR_IMAGES[imgKey];
-      if(img && img.complete && img.naturalWidth !== 0){
+      const sprite = (img && img.complete && img.naturalWidth !== 0) ? circleSprite(imgKey, img) : null;
+      if(sprite){
+        // The circular crop is already baked into the sprite.
+        ctx.drawImage(sprite, screenX - r, drawY - r, r*2, r*2);
+      } else if(img && img.complete && img.naturalWidth !== 0){
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(screenX, drawY, r, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
         ctx.drawImage(img, screenX - r, drawY - r, r*2, r*2);
+        ctx.restore();
       } else {
         ctx.fillStyle = teamBaseColor;
         ctx.fillRect(screenX - r, drawY - r, r*2, r*2);
       }
-      ctx.restore();
 
       ctx.strokeStyle = player.team === 'blue' ? '#003355' : '#550022';
       ctx.lineWidth = 5;

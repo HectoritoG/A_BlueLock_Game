@@ -83,6 +83,32 @@ test('relay transport publishes on its own topic and forwards peer messages', ()
   assert.equal(received[0].type, 'ready');
 });
 
+test('relay transport repeats the hello until the peer answers', async () => {
+  const { factory, state } = createFakeMqtt();
+  const relay = transport.createRelayTransport({
+    role: 'host',
+    roomCode: 'ABC123',
+    createMqttClient: factory
+  });
+  relay.setHandlers({ onMessage: () => {}, onStatus: () => {}, onOpen: () => {}, onError: () => {} });
+  relay.send({ v: 1, type: 'hello', from: 'host' });
+  assert.equal(state.published.length, 1);
+  assert.equal(state.published[0].retain, true);
+
+  // Without an answer the hello is published again so a guest that joins
+  // late (or a dropped message) still finds the room.
+  await new Promise(resolve => setTimeout(resolve, 1700));
+  assert.ok(state.published.length >= 2, 'the hello must be repeated');
+  assert.equal(state.published[1].retain, true);
+
+  // Once the peer answers the repetition stops.
+  state.options.onMessage('bluelock/v1/ABC123/guest', JSON.stringify({ v: 1, type: 'hello', from: 'guest' }));
+  const count = state.published.length;
+  await new Promise(resolve => setTimeout(resolve, 1700));
+  assert.equal(state.published.length, count, 'the hello must not be repeated any more');
+  relay.close();
+});
+
 test('auto transport falls back to the relay when the peer connection fails', async () => {
   const { factory, state } = createFakeMqtt();
   const auto = transport.createAutoTransport({

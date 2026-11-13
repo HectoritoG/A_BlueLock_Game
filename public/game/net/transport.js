@@ -65,11 +65,52 @@
     let closed = false;
     let connected = false;
     let lastStatus = { status: 'opening', detail: null };
+    let peerSeen = false;
+    let lastHello = null;
+    let lastRepeat = null;
+    let repeatLeft = 0;
+    let repeatTimer = null;
     const queue = [];
 
     function emitStatus(status, detail) {
       lastStatus = { status, detail: detail || null };
       if (handlers.onStatus) handlers.onStatus(status, detail || null);
+    }
+
+    function publishHello() {
+      if (!connected || !client || !lastHello) return;
+      try {
+        client.publish(ownTopic, JSON.stringify(lastHello), true);
+      } catch (error) {}
+    }
+
+    // A public broker can drop a message or a subscriber can join a moment
+    // late, so the hello is repeated until the peer answers. The room setup
+    // messages are repeated a few times as well; they are idempotent.
+    function scheduleRepeats() {
+      if (repeatTimer || closed) return;
+      repeatTimer = setInterval(function() {
+        if (closed) return;
+        if (!peerSeen) publishHello();
+        if (repeatLeft > 0 && lastRepeat) {
+          repeatLeft--;
+          try {
+            if (connected && client) client.publish(ownTopic, JSON.stringify(lastRepeat), false);
+          } catch (error) {}
+        }
+        if (peerSeen && repeatLeft <= 0 && repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
+      }, 1500);
+      if (repeatTimer && typeof repeatTimer.unref === 'function') repeatTimer.unref();
+    }
+
+    function noteMessage(message) {
+      if (!message || !message.type) return;
+      if (message.type === 'hello') { lastHello = message; peerSeen = false; scheduleRepeats(); return; }
+      if (message.type === 'ready' || message.type === 'start') {
+        lastRepeat = message;
+        repeatLeft = 3;
+        scheduleRepeats();
+      }
     }
 
     function flush() {
@@ -79,6 +120,7 @@
           const text = JSON.stringify(message);
           // The hello is retained so a peer that joins later still finds us.
           client.publish(ownTopic, text, message && message.type === 'hello');
+          noteMessage(message);
         } catch (error) {
           emitStatus('error', { code: 'relay-publish-failed', error: error });
           break;
@@ -90,6 +132,7 @@
       let message = null;
       try { message = JSON.parse(text); } catch (error) { return; }
       if (!message || typeof message !== 'object') return;
+      peerSeen = true;
       if (handlers.onMessage) handlers.onMessage(message);
     }
 
@@ -148,11 +191,13 @@
       if (closed) return false;
       if (!connected || !client) {
         queue.push(message);
+        noteMessage(message);
         return false;
       }
       try {
         const text = JSON.stringify(message);
         client.publish(ownTopic, text, message && message.type === 'hello');
+        noteMessage(message);
         return true;
       } catch (error) {
         emitStatus('error', { code: 'relay-send-failed', error: error });
@@ -164,6 +209,7 @@
       if (closed) return;
       closed = true;
       connected = false;
+      if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
       try {
         // Clear the retained hello so a future guest does not find a ghost.
         if (client && client.isConnected()) client.publish(ownTopic, '', true);

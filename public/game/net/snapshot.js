@@ -37,17 +37,26 @@
     'lastTouchTime'
   ];
 
-  function copyFields(source, fields, target) {
+  // Index of every synced field. Copying and packing use it to walk the
+  // properties a player actually has instead of probing every field name.
+  const PLAYER_FIELD_INDEX = new Map();
+  PLAYER_SYNC_FIELDS.forEach(function(field, index) { PLAYER_FIELD_INDEX.set(field, index); });
+  const BALL_FIELD_INDEX = new Map();
+  BALL_SYNC_FIELDS.forEach(function(field, index) { BALL_FIELD_INDEX.set(field, index); });
+
+  function copyFields(source, fields, target, index) {
     const out = target || {};
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
-      if (source && Object.prototype.hasOwnProperty.call(source, field)) out[field] = source[field];
+    if (!source) return out;
+    for (const key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+      if (!index.has(key)) continue;
+      out[key] = source[key];
     }
     return out;
   }
 
   function serializePlayer(player) {
-    const out = copyFields(player, PLAYER_SYNC_FIELDS);
+    const out = copyFields(player, PLAYER_SYNC_FIELDS, undefined, PLAYER_FIELD_INDEX);
     out.id = player.id || null;
     out.isHuman = !!player.isHuman;
     out.isRemoteHuman = !!player.isRemoteHuman;
@@ -56,7 +65,7 @@
 
   function serializeBall(ball) {
     if (!ball) return null;
-    const out = copyFields(ball, BALL_SYNC_FIELDS);
+    const out = copyFields(ball, BALL_SYNC_FIELDS, undefined, BALL_FIELD_INDEX);
     out.ownerId = ball.owner && ball.owner.id ? ball.owner.id : null;
     out.passTargetId = ball.passTarget && ball.passTarget.id ? ball.passTarget.id : null;
     out.lastShooterId = ball.lastShooter && ball.lastShooter.id ? ball.lastShooter.id : null;
@@ -133,10 +142,12 @@
     for (let i = 0; i < maskCount; i++) masks[i] = 0;
     const values = [];
     for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
-      if (!source || !Object.prototype.hasOwnProperty.call(source, field) || source[field] === undefined) continue;
+      const value = source ? source[fields[i]] : undefined;
+      // A missing field and a field set to undefined are treated the same, so
+      // the guest keeps its previous value instead of receiving a null.
+      if (value === undefined) continue;
       masks[Math.floor(i / 32)] = (masks[Math.floor(i / 32)] | (1 << (i % 32))) >>> 0;
-      values.push(packNumber(source[field]));
+      values.push(packNumber(value));
     }
     return [masks, values];
   }

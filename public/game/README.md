@@ -68,6 +68,16 @@ The browser game stays a classic script until `public/game/main.js` replaces the
 - GitHub Pages can host this because it only serves static files; the signaling broker and the optional relay are external and gameplay traffic is peer-to-peer when possible.
 - Keep the host tab visible. The game includes a watchdog that keeps the simulation alive when the browser throttles `requestAnimationFrame`, but a visible tab has the best frame rate.
 
+## Performance
+
+The host is the authoritative simulation, so it is the page that has to do the most work per frame. The frame budget is protected with a few cheap tricks:
+
+- The tactical context (team shape, ball path prediction, roles) is rebuilt at 30 Hz. The per-player AI keeps running every frame so the chance based decisions (shots, abilities) stay exactly the same.
+- The player sprites are cropped to a circle once into an offscreen canvas, so the renderer does not build a clip path for every player on every frame.
+- Only the grass stripes inside the camera view are painted; every stripe covers the whole field height, so painting all of them fills the screen many times per frame.
+- The HUD only writes to the DOM when a value actually changes.
+- When the measured frame time stays above 24 ms the game drops to a low power mode (flat pitch, no player shadows) until the machine recovers.
+
 ## Rules
 
 - `core/` and `ai.js` must not use `window`, `document`, `canvas`, `Image`, `Audio` or `localStorage`.

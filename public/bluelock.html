@@ -1536,6 +1536,9 @@ let lobby = null;
 let rafScheduled = false;
 const NET_INPUT_INTERVAL = 1 / 30;
 const NET_SNAPSHOT_INTERVAL = 1 / 15;
+// The tactical context is rebuilt at 30 Hz while the movement and the
+// per-player decisions keep running at display rate.
+const TACTICS_TICK_INTERVAL = 1 / 30;
 const netInterpolator = window.BLNetInterpolation
   ? window.BLNetInterpolation.createSnapshotInterpolator({ delayMs: 90 })
   : { push: function(){}, sample: function(){ return null; }, reset: function(){} };
@@ -3658,9 +3661,20 @@ function drawField(){
   ctx.fillStyle = '#0a1e12'; ctx.fillRect(0, 0, W / GAME_SCALE, H / GAME_SCALE);
   const fx = FIELD.x - camX, fy = FIELD.y - camY;
   const cx = fx + FIELD.w / 2, cy = fy + FIELD.h / 2;
-  // Grass stripes
+  // Grass stripes. Only the stripes inside the camera view are painted: every
+  // stripe covers the whole field height, so drawing all of them fills the
+  // screen 24 times per frame and costs a lot of fill rate.
   const stripeW = FIELD.w / 24;
-  for(let i = 0; i < 24; i++){ ctx.fillStyle = i % 2 === 0 ? '#0d3a1e' : '#0f4524'; ctx.fillRect(fx + i * stripeW, fy, stripeW, FIELD.h); }
+  const viewW = W / GAME_SCALE;
+  const firstStripe = Math.max(0, Math.floor((camX - FIELD.x) / stripeW) - 1);
+  const lastStripe = Math.min(23, Math.ceil((camX - FIELD.x + viewW) / stripeW) + 1);
+  if(G.lowFx){
+    // Low power mode: a flat pitch instead of the grass stripes.
+    ctx.fillStyle = '#0d3a1e';
+    ctx.fillRect(fx, fy, FIELD.w, FIELD.h);
+  } else {
+    for(let i = firstStripe; i <= lastStripe; i++){ ctx.fillStyle = i % 2 === 0 ? '#0d3a1e' : '#0f4524'; ctx.fillRect(fx + i * stripeW, fy, stripeW, FIELD.h); }
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
   // Boundary and halfway line
   ctx.strokeRect(fx, fy, FIELD.w, FIELD.h);
@@ -3907,6 +3921,15 @@ function animate(now){
     requestAnimationFrame(function(nextNow){ rafScheduled = false; animate(nextNow); });
   }
   const dt = Math.min(Math.max((now - G.lastTime) / 1000, 0), 0.05); G.lastTime = now;
+  // Adaptive quality: when the machine cannot keep up with the frame rate the
+  // heaviest decorations are dropped so the game stays responsive. A hidden
+  // tab is ignored because its frame rate is throttled by the browser.
+  if(!document.hidden){
+    G.frameAvg = G.frameAvg ? G.frameAvg * 0.92 + dt * 1000 * 0.08 : dt * 1000;
+    if(G.frameAvg > 24 && !G.lowFx){ G.lowFx = true; G.lowFxTimer = 0; }
+    else if(G.frameAvg < 15 && G.lowFx){ G.lowFxTimer = (G.lowFxTimer || 0) + dt; if(G.lowFxTimer > 3){ G.lowFx = false; G.lowFxTimer = 0; } }
+    else { G.lowFxTimer = 0; }
+  }
   if(G.gameRunning){
     // === PAUSE: skip all updates, just render ===
     if(G.paused){
@@ -3973,7 +3996,17 @@ function animate(now){
       if(!G.goalCelebrating){ G.timeLeft -= dt; if(G.timeLeft <= 0){ G.timeLeft = 0; endGame(); } updateTimerUI(); }
       updateHumanPlayer(dt);
       if(G.netMode === 'host') updateRemotePlayer(dt);
-      updateTeamTactics(dt); for(const p of G.players) updateAI(p, dt); for(const p of G.players) p.update(dt);
+      // The tactical context (team shape, ball path prediction, roles) is
+      // rebuilt at 30 Hz because it is deterministic and slightly stale
+      // information is harmless. The per-player AI keeps running every frame
+      // so the chance based decisions (shots, abilities) stay identical.
+      G.tacticsTick = (G.tacticsTick || 0) + dt;
+      if(G.tacticsTick >= TACTICS_TICK_INTERVAL){
+        updateTeamTactics(G.tacticsTick);
+        G.tacticsTick = 0;
+      }
+      for(const p of G.players) updateAI(p, dt);
+      for(const p of G.players) p.update(dt);
       G.ball.update(dt); updateParticles(dt); updateHioriSnowfields(dt); updateKuronaBlackHoles(dt); updateKarasuCrow(dt); updateBarouLionAura(dt); updateCamera();
       // === SHIDOU ANIMATION TIMER ===
       if(G.shidouAnimActive){
